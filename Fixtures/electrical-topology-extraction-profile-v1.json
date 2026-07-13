@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "connectivityToleranceMicron": 0.5,
+  "netRules": [
+    {"netID": "VDD", "kind": "power", "nominalVoltageV": 1.8, "domainID": "core"},
+    {"netID": "VSS", "kind": "ground", "nominalVoltageV": 0, "domainID": "ground"}
+  ],
+  "sourceRules": [
+    {"id": "source-vdd", "netID": "VDD", "nodeID": "pin:U1:VDD:p-vdd", "voltageV": 1.8, "maxCurrentA": 0.1},
+    {"id": "source-vss", "netID": "VSS", "nodeID": "pin:U1:VSS:p-vss", "voltageV": 0, "maxCurrentA": 0.1}
+  ],
+  "loadRules": [
+    {"id": "load-vdd", "deviceType": "INV", "netID": "VDD", "staticCurrentA": 0.01, "dynamicCurrentA": 0.02, "activityFactor": 1}
+  ],
+  "layerRules": [
+    {"layer": 1, "widthMicron": 2, "thicknessMicron": 0.2, "resistanceOhmPerMicron": 0.001}
+  ],
+  "viaRule": {"resistanceOhm": 0.01, "cutAreaSquareMicron": 1, "count": 1},
+  "deviceRules": [
+    {"master": "INV", "model": "INV_MODEL", "domainID": "core", "maxTerminalVoltageV": 1.8, "isDriver": false}
+  ],
+  "domains": [
+    {"id": "core", "nominalVoltageV": 1.8, "maximumVoltageV": 1.98, "minimumVoltageV": 1.62, "requiresPowerDomainIDs": []},
+    {"id": "ground", "nominalVoltageV": 0, "maximumVoltageV": 0.1, "minimumVoltageV": -0.1, "requiresPowerDomainIDs": []}
+  ],
+  "activityVectors": [
+    {"id": "peak", "weight": 1, "peakScale": 1.5}
+  ],
+  "esdClamps": [],
+  "wells": [],
+  "substrateContacts": [],
+  "agingModels": [],
+  "rules": {
+    "maximumIRDropV": 0.18,
+    "maximumCurrentDensityAperSquareMicron": 1,
+    "maximumViaCurrentDensityAperSquareMicron": 1,
+    "minimumESDResistanceOhm": 1
+  }
+}

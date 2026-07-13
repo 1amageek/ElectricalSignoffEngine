@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "corpusID": "electrical-signoff-contract",
+  "corpusVersion": "1",
+  "pdkDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "requireIndependentOracle": false,
+  "cases": [
+    {
+      "caseID": "clean-erc-contract",
+      "kind": "positive",
+      "axis": "erc",
+      "request": {
+        "schemaVersion": 1,
+        "runID": "qualification-clean-erc",
+        "inputs": [],
+        "design": {
+          "artifact": {
+            "artifactID": "design",
+            "path": "design.json",
+            "kind": "netlist",
+            "format": "JSON",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "topDesignName": "top",
+          "designDigest": "design-digest"
+        },
+        "physicalDesign": {
+          "layoutArtifact": {
+            "artifactID": "physical",
+            "path": "physical.json",
+            "kind": "layout",
+            "format": "JSON",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "topCell": "top",
+          "layoutDigest": "layout-digest"
+        },
+        "pdk": {
+          "manifest": {
+            "artifactID": "pdk",
+            "path": "pdk.json",
+            "kind": "technology",
+            "format": "JSON",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "processID": "fixture",
+          "version": "1",
+          "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "configuration": {
+          "operatingCondition": {
+            "id": "typical",
+            "pdkCornerID": "typical",
+            "temperatureC": 25,
+            "supplyVoltageScale": 1,
+            "activityScale": 1
+          },
+          "operatingConditions": [
+            {
+              "id": "typical",
+              "pdkCornerID": "typical",
+              "temperatureC": 25,
+              "supplyVoltageScale": 1,
+              "activityScale": 1
+            }
+          ],
+          "minimumLifetimeHours": 87600,
+          "requiredAxes": ["erc"]
+        }
+      },
+      "expected": {
+        "status": "completed",
+        "violationCount": 0,
+        "diagnosticCodes": [],
+        "metrics": [
+          {
+            "name": "erc-violations",
+            "expectedValue": 0,
+            "unit": "count",
+            "absoluteTolerance": 0,
+            "relativeTolerance": 0
+          }
+        ]
+      }
+    }
+  ]
+}

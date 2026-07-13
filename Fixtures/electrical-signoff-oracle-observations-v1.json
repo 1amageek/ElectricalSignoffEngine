@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "oracleID": "reference-electrical-oracle",
+  "toolVersion": "contract-fixture-1",
+  "pdkDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "observations": [
+    {
+      "caseID": "clean-erc-contract",
+      "observation": {
+        "oracleID": "reference-electrical-oracle",
+        "toolVersion": "contract-fixture-1",
+        "pdkDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "status": "completed",
+        "violationCount": 0,
+        "diagnosticCodes": [],
+        "metrics": [
+          {
+            "name": "erc-violations",
+            "value": 0,
+            "unit": "count"
+          }
+        ],
+        "artifacts": []
+      }
+    }
+  ]
+}

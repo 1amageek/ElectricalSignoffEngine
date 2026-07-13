@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "designDigest": "design-fixture-v1",
+  "pdkDigest": "pdk-fixture-v1",
+  "layoutDigest": "layout-fixture-v1",
+  "topCell": "fixture_top",
+  "nodes": [{"id": "vdd-source", "netID": "VDD"}],
+  "nets": [{"id": "VDD", "kind": "power", "nominalVoltageV": 1.8, "domainID": "core", "requiresPowerDomainIDs": []}],
+  "devices": [],
+  "segments": [],
+  "vias": [],
+  "sources": [{"id": "vdd-source-1", "netID": "VDD", "nodeID": "vdd-source", "voltageV": 1.8, "maxCurrentA": 0.1}],
+  "loads": [],
+  "activityVectors": [],
+  "domains": [{"id": "core", "nominalVoltageV": 1.8, "maximumVoltageV": 1.98, "minimumVoltageV": 1.62, "requiresPowerDomainIDs": []}],
+  "esdClamps": [],
+  "wells": [],
+  "substrateContacts": [],
+  "agingModels": [],
+  "rules": {"maximumIRDropV": 0.18, "maximumCurrentDensityAperSquareMicron": 1, "maximumViaCurrentDensityAperSquareMicron": 1, "minimumESDResistanceOhm": 1}
+}

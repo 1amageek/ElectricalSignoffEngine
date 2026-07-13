@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "designDigest": "design-fixture-v1",
+  "pdkDigest": "pdk-fixture-v1",
+  "layoutDigest": "layout-fixture-v1",
+  "topCell": "fixture_top",
+  "nodes": [
+    {"id": "vdd-source", "netID": "VDD"},
+    {"id": "vdd-load", "netID": "VDD"},
+    {"id": "vss-source", "netID": "VSS"}
+  ],
+  "nets": [
+    {"id": "VDD", "kind": "power", "nominalVoltageV": 1.8, "domainID": "core", "requiresPowerDomainIDs": []},
+    {"id": "VSS", "kind": "ground", "nominalVoltageV": 0, "domainID": "ground", "requiresPowerDomainIDs": []}
+  ],
+  "devices": [
+    {"id": "U1", "model": "fixture_cell", "terminals": {"VDD": "VDD", "VSS": "VSS"}, "domainID": "core", "maxTerminalVoltageV": 1.8, "isDriver": false}
+  ],
+  "segments": [
+    {"id": "vdd-segment-1", "netID": "VDD", "fromNodeID": "vdd-source", "toNodeID": "vdd-load", "resistanceOhm": 0.05, "currentA": 0.02, "widthMicron": 2, "thicknessMicron": 0.2, "currentLimitA": 0.1, "layer": "M1"}
+  ],
+  "vias": [
+    {"id": "vdd-via-1", "netID": "VDD", "nodeID": "vdd-load", "resistanceOhm": 0.01, "currentA": 0.02, "cutAreaSquareMicron": 1, "currentLimitA": 0.05, "count": 1}
+  ],
+  "sources": [
+    {"id": "vdd-source-1", "netID": "VDD", "nodeID": "vdd-source", "voltageV": 1.8, "maxCurrentA": 0.1},
+    {"id": "vss-source-1", "netID": "VSS", "nodeID": "vss-source", "voltageV": 0, "maxCurrentA": 0.1}
+  ],
+  "loads": [
+    {"id": "U1-vdd-load", "netID": "VDD", "nodeID": "vdd-load", "staticCurrentA": 0.02, "dynamicCurrentA": 0.01, "activityFactor": 1, "domainID": "core"}
+  ],
+  "activityVectors": [
+    {"id": "peak", "weight": 1, "peakScale": 1.5}
+  ],
+  "domains": [
+    {"id": "core", "nominalVoltageV": 1.8, "maximumVoltageV": 1.98, "minimumVoltageV": 1.62, "requiresPowerDomainIDs": []},
+    {"id": "ground", "nominalVoltageV": 0, "maximumVoltageV": 0.1, "minimumVoltageV": -0.1, "requiresPowerDomainIDs": []}
+  ],
+  "esdClamps": [
+    {"id": "clamp-vdd", "domainID": "core", "protectedNetID": "VDD", "groundNetID": "VSS", "triggerVoltageV": 1.2, "maximumCurrentA": 0.1, "resistanceOhm": 5}
+  ],
+  "wells": [
+    {"id": "well-core", "domainID": "core", "type": "nwell", "areaSquareMicron": 100, "spacingToOppositeWellMicron": 2, "requiredSpacingMicron": 1, "substrateContactIDs": ["contact-core"]}
+  ],
+  "substrateContacts": [
+    {"id": "contact-core", "wellID": "well-core", "netID": "VSS", "areaSquareMicron": 4}
+  ],
+  "agingModels": [
+    {"deviceID": "U1", "nbtiCoefficient": 1, "hciCoefficient": 1, "tddbCoefficient": 1, "dutyCycle": 0.2, "lifetimeHoursAtReference": 200000, "referenceTemperatureC": 25, "referenceVoltageV": 1.8}
+  ],
+  "rules": {
+    "maximumIRDropV": 0.18,
+    "maximumCurrentDensityAperSquareMicron": 1,
+    "maximumViaCurrentDensityAperSquareMicron": 1,
+    "minimumESDResistanceOhm": 1
+  }
+}

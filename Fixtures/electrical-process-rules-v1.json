@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "pdkDigest": "pdk-fixture-v1",
+  "processID": "fixture",
+  "pdkVersion": "1",
+  "cornerRules": [
+    {
+      "cornerID": "typical",
+      "rules": {
+        "maximumIRDropV": 0.18,
+        "maximumCurrentDensityAperSquareMicron": 1.0,
+        "maximumViaCurrentDensityAperSquareMicron": 1.0,
+        "minimumESDResistanceOhm": 1.0
+      }
+    },
+    {
+      "cornerID": "slow",
+      "rules": {
+        "maximumIRDropV": 0.16,
+        "maximumCurrentDensityAperSquareMicron": 0.8,
+        "maximumViaCurrentDensityAperSquareMicron": 0.8,
+        "minimumESDResistanceOhm": 1.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "policyID": "electrical-signoff-release-contract",
+  "pdkDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "requiredAxes": [
+    "power-integrity",
+    "erc",
+    "esd",
+    "latch-up",
+    "aging"
+  ],
+  "requiredCornerIDs": [
+    "typical"
+  ],
+  "minimumQualificationLevel": "corpusChecked",
+  "requireIndependentOracle": false,
+  "requireArtifactHashes": true,
+  "requireArtifactIntegrityVerification": true,
+  "maximumQualificationAgeSeconds": 2592000
+}

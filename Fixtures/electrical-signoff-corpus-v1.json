@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "electrical-signoff-native-corpus",
+  "qualificationScope": "process-independent-contract",
+  "cases": [
+    {
+      "caseID": "clean-extracted-topology",
+      "topologyPath": "electrical-topology-clean-v1.json",
+      "requiredAxes": ["power-integrity", "erc", "esd", "latch-up", "aging"],
+      "expectedStatus": "completed",
+      "expectedViolationCount": 0
+    },
+    {
+      "caseID": "blocked-no-power-grid",
+      "topologyPath": "electrical-topology-blocked-no-grid-v1.json",
+      "requiredAxes": ["power-integrity"],
+      "expectedStatus": "blocked",
+      "expectedDiagnosticCode": "electrical.topology.insufficient-semantics"
+    }
+  ],
+  "oracleCorrelation": {
+    "status": "not-qualified",
+    "reason": "No process-specific external electrical signoff oracle is declared by this generic package."
+  }
+}
