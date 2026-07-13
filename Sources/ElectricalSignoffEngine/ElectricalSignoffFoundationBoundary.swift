@@ -1,14 +1,12 @@
 import CircuiteFoundation
 import ElectricalSignoffCore
 import Foundation
-import XcircuitePackage
 
 /// Canonical cross-engine evidence view for an electrical signoff run.
 ///
-/// The rich electrical result and the Xcircuite run envelope remain owned by
-/// their respective packages. This projection gives agents, flow policy, and
-/// human review a stable Foundation representation without making Foundation
-/// depend on either package.
+/// The rich electrical result remains owned by the electrical domain. This
+/// projection gives agents, flow policy, and human review a stable Foundation
+/// representation without making Foundation depend on either package.
 public struct ElectricalSignoffFoundationEvidence: Sendable, Hashable, Codable, ArtifactProducing, EvidenceProviding, DiagnosticReporting {
     public let artifacts: [ArtifactReference]
     public let evidence: EvidenceManifest
@@ -20,18 +18,10 @@ public struct ElectricalSignoffFoundationEvidence: Sendable, Hashable, Codable, 
     ) throws {
         try result.validate()
         let references = try Self.uniqueArtifacts(from: result)
-        let bridge = ElectricalSignoffFoundationArtifactBridge()
         var foundationArtifacts: [ArtifactReference] = []
         foundationArtifacts.reserveCapacity(references.count)
         for reference in references {
-            do {
-                foundationArtifacts.append(try bridge.reference(from: reference))
-            } catch {
-                throw ElectricalSignoffFoundationBoundaryError.invalidArtifact(
-                    path: reference.path,
-                    reason: error.localizedDescription
-                )
-            }
+            foundationArtifacts.append(reference)
         }
 
         self.artifacts = foundationArtifacts.sorted {
@@ -49,8 +39,8 @@ public struct ElectricalSignoffFoundationEvidence: Sendable, Hashable, Codable, 
 
     private static func uniqueArtifacts(
         from result: ElectricalSignoffRunResult
-    ) throws -> [XcircuiteFileReference] {
-        var referencesByPath: [String: XcircuiteFileReference] = [:]
+    ) throws -> [ArtifactReference] {
+        var referencesByPath: [String: ArtifactReference] = [:]
         for envelope in envelopes(from: result) {
             for reference in envelope.artifacts {
                 if let existing = referencesByPath[reference.path] {
@@ -69,7 +59,7 @@ public struct ElectricalSignoffFoundationEvidence: Sendable, Hashable, Codable, 
 
     private static func envelopes(
         from result: ElectricalSignoffRunResult
-    ) -> [XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>] {
+    ) -> [ElectricalSignoffResult] {
         let axisEnvelopes = result.axisResults
             .sorted { $0.key.rawValue < $1.key.rawValue }
             .map(\.value)
@@ -84,41 +74,6 @@ public struct ElectricalSignoffFoundationEvidence: Sendable, Hashable, Codable, 
     private static func diagnostics(
         from result: ElectricalSignoffRunResult
     ) throws -> [DesignDiagnostic] {
-        var values: [DesignDiagnostic] = []
-        for envelope in envelopes(from: result) {
-            for diagnostic in envelope.diagnostics {
-                let code: DiagnosticCode
-                do {
-                    code = try DiagnosticCode(rawValue: diagnostic.code)
-                } catch {
-                    throw ElectricalSignoffFoundationBoundaryError.invalidDiagnostic(
-                        code: diagnostic.code,
-                        reason: error.localizedDescription
-                    )
-                }
-                let severity: DiagnosticSeverity
-                switch diagnostic.severity {
-                case .info:
-                    severity = .information
-                case .warning:
-                    severity = .warning
-                case .error:
-                    severity = .error
-                }
-                let detail = diagnostic.entity.map { "entity=\($0)" }
-                values.append(
-                    DesignDiagnostic(
-                        code: code,
-                        severity: severity,
-                        summary: diagnostic.message,
-                        detail: detail,
-                        suggestedActions: diagnostic.suggestedActions.map {
-                            SuggestedAction(code: $0, summary: $0)
-                        }
-                    )
-                )
-            }
-        }
-        return values
+        envelopes(from: result).flatMap(\.diagnostics)
     }
 }

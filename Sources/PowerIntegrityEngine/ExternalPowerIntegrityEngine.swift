@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct ExternalPowerIntegrityEngine: PowerIntegrityAnalyzing {
@@ -9,7 +9,7 @@ public struct ExternalPowerIntegrityEngine: PowerIntegrityAnalyzing {
         self.runner = runner
     }
 
-    public func execute(_ request: ElectricalSignoffRequest) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    public func execute(_ request: ElectricalSignoffRequest) async throws -> ElectricalSignoffResult {
         try await runner.execute(request, axis: .powerIntegrity)
     }
 }

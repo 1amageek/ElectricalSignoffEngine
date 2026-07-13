@@ -1,10 +1,10 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
     public let projectRoot: URL
     public let verifyIntegrity: Bool
-    private let foundationArtifactBridge = ElectricalSignoffFoundationArtifactBridge()
+    private let foundationArtifactBridge = ElectricalArtifactAccess()
 
     public init(projectRoot: URL, verifyIntegrity: Bool = true) {
         self.projectRoot = projectRoot.standardizedFileURL
@@ -34,7 +34,7 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
         } catch {
             throw ElectricalSignoffError.artifactIntegrity(
                 path: topologyReference.path,
-                status: .invalidPath,
+                status: "invalid-path",
                 message: error.localizedDescription
             )
         }
@@ -62,14 +62,16 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
         )
     }
 
-    private func uniqueReferences(for request: ElectricalSignoffRequest) throws -> [XcircuiteFileReference] {
-        var references: [XcircuiteFileReference] = []
+    private func uniqueReferences(for request: ElectricalSignoffRequest) throws -> [ArtifactReference] {
+        var references: [ArtifactReference] = []
         references.append(contentsOf: request.inputs)
-        references.append(request.design.artifact)
+        references.append(try request.materializedArtifact(for: request.design.artifact, role: "design"))
         references.append(request.physicalDesign.layoutArtifact)
         references.append(request.pdk.manifest)
-        if let powerIntent = request.powerIntent {
-            references.append(powerIntent.artifact)
+        if let powerIntentReference = try request.powerIntent.map({
+            try request.materializedArtifact(for: $0.artifact, role: "power-intent")
+        }) {
+            references.append(powerIntentReference)
         }
         if let parasitics = request.parasitics {
             references.append(parasitics)
@@ -84,8 +86,8 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             references.append(processRuleArtifact)
         }
 
-        var referencesByPath: [String: XcircuiteFileReference] = [:]
-        var unique: [XcircuiteFileReference] = []
+        var referencesByPath: [String: ArtifactReference] = [:]
+        var unique: [ArtifactReference] = []
         for reference in references {
             if let existing = referencesByPath[reference.path] {
                 guard compatibleArtifactReferences(existing, reference) else {
@@ -100,71 +102,63 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
     }
 
     private func compatibleArtifactReferences(
-        _ lhs: XcircuiteFileReference,
-        _ rhs: XcircuiteFileReference
+        _ lhs: ArtifactReference,
+        _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if let lhsDigest = lhs.sha256, let rhsDigest = rhs.sha256,
-           lhsDigest.caseInsensitiveCompare(rhsDigest) != .orderedSame {
+        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
             return false
         }
-        if let lhsByteCount = lhs.byteCount, let rhsByteCount = rhs.byteCount,
-           lhsByteCount != rhsByteCount {
+        if lhs.byteCount != rhs.byteCount {
             return false
         }
         return true
     }
 
-    private func topologyReference(for request: ElectricalSignoffRequest) -> XcircuiteFileReference? {
+    private func topologyReference(for request: ElectricalSignoffRequest) -> ArtifactReference? {
         if let topologyArtifact = request.topologyArtifact {
             return topologyArtifact
         }
-        let candidates = request.inputs + [request.design.artifact]
+        let candidates = request.inputs
         return candidates.first { reference in
             reference.format == .json
                 && (reference.path.localizedCaseInsensitiveContains("topology")
-                    || reference.artifactID?.localizedCaseInsensitiveContains("topology") == true)
+                    || reference.artifactID.localizedCaseInsensitiveContains("topology"))
         }
     }
 
-    private func verify(_ reference: XcircuiteFileReference) throws {
+    private func verify(_ reference: ArtifactReference) throws {
         do {
             try foundationArtifactBridge.validate(
                 reference,
                 relativeTo: projectRoot,
                 verifyIntegrity: verifyIntegrity
             )
-        } catch let error as ElectricalSignoffFoundationArtifactBridgeError {
+        } catch let error as ElectricalArtifactAccessError {
             throw electricalError(for: reference, error: error)
         } catch {
             throw ElectricalSignoffError.artifactIntegrity(
                 path: reference.path,
-                status: .unreadableArtifact,
+                    status: "unreadable-artifact",
                 message: error.localizedDescription
             )
         }
     }
 
     private func electricalError(
-        for reference: XcircuiteFileReference,
-        error: ElectricalSignoffFoundationArtifactBridgeError
+        for reference: ArtifactReference,
+        error: ElectricalArtifactAccessError
     ) -> ElectricalSignoffError {
-        let status: XcircuiteFileReferenceIntegrityStatus
+        let status: String
         switch error {
         case .invalidReference:
-            status = .invalidPath
+            status = "invalid-location"
         case .missingArtifact:
-            status = .missingArtifact
+            status = "missing-file"
         case .notRegularFile:
-            status = .unreadableArtifact
-        case .unreadable:
-            status = .unreadableArtifact
-        case .digestMismatch:
-            status = .sha256Mismatch
-        case .byteCountMismatch:
-            status = .byteCountMismatch
-        case .missingDigest, .missingByteCount:
-            status = .unreadableArtifact
+            status = "not-regular-file"
+        case .integrityFailure:
+            status = "integrity-failure"
         }
         return ElectricalSignoffError.artifactIntegrity(
             path: reference.path,
@@ -199,11 +193,11 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             guard let reference = request.parasitics else {
                 throw ElectricalSignoffError.missingParasitics
             }
-            guard reference.sha256?.caseInsensitiveCompare(parasiticDigest) == .orderedSame else {
+            guard reference.sha256.caseInsensitiveCompare(parasiticDigest) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "parasitic",
                     expected: parasiticDigest,
-                    actual: reference.sha256 ?? "missing"
+                    actual: reference.sha256
                 )
             }
         } else if request.parasitics != nil {
@@ -214,6 +208,10 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             )
         }
         if let powerIntent = request.powerIntent {
+            let powerIntentReference = try request.materializedArtifact(
+                for: powerIntent.artifact,
+                role: "power-intent"
+            )
             guard powerIntent.designDigest.caseInsensitiveCompare(request.design.designDigest) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent design",
@@ -224,15 +222,15 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             guard let topologyPowerIntentDigest = topology.powerIntentDigest else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent",
-                    expected: powerIntent.artifact.sha256 ?? "required",
+                    expected: powerIntentReference.sha256,
                     actual: "missing-from-topology"
                 )
             }
-            guard topologyPowerIntentDigest.caseInsensitiveCompare(powerIntent.artifact.sha256 ?? "") == .orderedSame else {
+            guard topologyPowerIntentDigest.caseInsensitiveCompare(powerIntentReference.sha256) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent",
                     expected: topologyPowerIntentDigest,
-                    actual: powerIntent.artifact.sha256 ?? "missing"
+                    actual: powerIntentReference.sha256
                 )
             }
         } else if topology.powerIntentDigest != nil {

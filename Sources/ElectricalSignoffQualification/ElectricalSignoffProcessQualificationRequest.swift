@@ -1,6 +1,6 @@
 import Foundation
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffProcessQualificationRequest: Sendable, Hashable, Codable {
     public static let currentSchemaVersion = 2

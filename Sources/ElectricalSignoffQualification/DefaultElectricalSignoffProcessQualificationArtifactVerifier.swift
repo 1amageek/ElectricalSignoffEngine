@@ -1,13 +1,13 @@
 import Foundation
 import ElectricalSignoffCore
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: ElectricalSignoffProcessQualificationArtifactVerifying, Sendable {
-    private let foundationArtifactBridge: ElectricalSignoffFoundationArtifactBridge
+    private let foundationArtifactBridge: ElectricalArtifactAccess
 
     public init(
-        foundationArtifactBridge: ElectricalSignoffFoundationArtifactBridge = ElectricalSignoffFoundationArtifactBridge()
+        foundationArtifactBridge: ElectricalArtifactAccess = ElectricalArtifactAccess()
     ) {
         self.foundationArtifactBridge = foundationArtifactBridge
     }
@@ -22,7 +22,7 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
             ("health", request.processEvidence.healthEvidence),
             ("approval", request.processEvidence.approvalEvidence),
         ]
-        var artifacts: [(category: String, reference: XcircuiteFileReference)] = []
+        var artifacts: [(category: String, reference: ArtifactReference)] = []
         for (category, evidence) in groups {
             for item in evidence {
                 if let artifact = item.artifact {
@@ -34,20 +34,16 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
             (category: "evidence", reference: $0)
         })
 
-        var verifiedReferencesByPath: [String: XcircuiteFileReference] = [:]
+        var verifiedReferencesByPath: [String: ArtifactReference] = [:]
         var issues: [ElectricalSignoffProcessQualificationArtifactIntegrityIssue] = []
         for item in artifacts {
             if let existing = verifiedReferencesByPath[item.reference.path] {
                 if existing != item.reference {
                     issues.append(ElectricalSignoffProcessQualificationArtifactIntegrityIssue(
                         category: item.category,
-                        integrity: XcircuiteFileReferenceIntegrity(
-                            status: .invalidPath,
-                            path: item.reference.path,
-                            expectedSHA256: item.reference.sha256,
-                            expectedByteCount: item.reference.byteCount,
-                            message: "Conflicting process qualification artifact references share one path."
-                        )
+                        integrity: ArtifactIntegrity(issues: [
+                            .invalidLocation("Conflicting process qualification artifact references share one path.")
+                        ])
                     ))
                 }
                 continue
@@ -59,7 +55,7 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
                     relativeTo: projectRoot,
                     verifyIntegrity: true
                 )
-            } catch let error as ElectricalSignoffFoundationArtifactBridgeError {
+            } catch let error as ElectricalArtifactAccessError {
                 issues.append(ElectricalSignoffProcessQualificationArtifactIntegrityIssue(
                     category: item.category,
                     integrity: integrity(for: item.reference, error: error)
@@ -68,13 +64,9 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
             } catch {
                 issues.append(ElectricalSignoffProcessQualificationArtifactIntegrityIssue(
                     category: item.category,
-                    integrity: XcircuiteFileReferenceIntegrity(
-                        status: .unreadableArtifact,
-                        path: item.reference.path,
-                        expectedSHA256: item.reference.sha256,
-                        expectedByteCount: item.reference.byteCount,
-                        message: error.localizedDescription
-                    )
+                    integrity: ArtifactIntegrity(issues: [
+                        .unreadableFile(error.localizedDescription)
+                    ])
                 ))
                 continue
             }
@@ -92,7 +84,7 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
     }
 
     private func verifyApproval(
-        _ reference: XcircuiteFileReference,
+        _ reference: ArtifactReference,
         request: ElectricalSignoffProcessQualificationRequest,
         projectRoot: URL
     ) -> ElectricalSignoffProcessQualificationArtifactIntegrityIssue? {
@@ -110,7 +102,7 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
         }
         do {
             let record = try JSONDecoder().decode(
-                XcircuiteApprovalRecord.self,
+                ElectricalApprovalRecord.self,
                 from: Data(contentsOf: url)
             )
             guard record.runID == request.qualificationReport.runID,
@@ -127,54 +119,36 @@ public struct DefaultElectricalSignoffProcessQualificationArtifactVerifier: Elec
         } catch {
             return semanticIssue(
                 reference,
-                message: "Approval evidence is not a decodable XcircuiteApprovalRecord: \(error.localizedDescription)"
+                message: "Approval evidence is not a decodable ElectricalApprovalRecord: \(error.localizedDescription)"
             )
         }
     }
 
     private func semanticIssue(
-        _ reference: XcircuiteFileReference,
+        _ reference: ArtifactReference,
         message: String
     ) -> ElectricalSignoffProcessQualificationArtifactIntegrityIssue {
         ElectricalSignoffProcessQualificationArtifactIntegrityIssue(
             category: "approval",
-            integrity: XcircuiteFileReferenceIntegrity(
-                status: .unreadableArtifact,
-                path: reference.path,
-                expectedSHA256: reference.sha256,
-                expectedByteCount: reference.byteCount,
-                message: message
-            )
+            integrity: ArtifactIntegrity(issues: [.unreadableFile(message)])
         )
     }
 
     private func integrity(
-        for reference: XcircuiteFileReference,
-        error: ElectricalSignoffFoundationArtifactBridgeError
-    ) -> XcircuiteFileReferenceIntegrity {
-        let status: XcircuiteFileReferenceIntegrityStatus
+        for reference: ArtifactReference,
+        error: ElectricalArtifactAccessError
+    ) -> ArtifactIntegrity {
+        let issue: ArtifactIntegrityIssue
         switch error {
         case .invalidReference:
-            status = .invalidPath
+            issue = .invalidLocation(error.localizedDescription)
         case .missingArtifact:
-            status = .missingArtifact
-        case .notRegularFile, .unreadable:
-            status = .unreadableArtifact
-        case .digestMismatch:
-            status = .sha256Mismatch
-        case .byteCountMismatch:
-            status = .byteCountMismatch
-        case .missingDigest:
-            status = .missingDigest
-        case .missingByteCount:
-            status = .missingByteCount
+            issue = .missingFile(reference.path)
+        case .notRegularFile:
+            issue = .notRegularFile(reference.path)
+        case .integrityFailure:
+            issue = .unreadableFile(error.localizedDescription)
         }
-        return XcircuiteFileReferenceIntegrity(
-            status: status,
-            path: reference.path,
-            expectedSHA256: reference.sha256,
-            expectedByteCount: reference.byteCount,
-            message: error.localizedDescription
-        )
+        return ArtifactIntegrity(issues: [issue])
     }
 }

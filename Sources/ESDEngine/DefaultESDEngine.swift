@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultESDEngine: ESDExecuting {
@@ -11,7 +11,7 @@ public struct DefaultESDEngine: ESDExecuting {
 
     public func execute(
         _ request: ElectricalSignoffRequest
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    ) async throws -> ElectricalSignoffResult {
         let axis: ElectricalSignoffAnalysisAxis = .esd
         let startedAt = support.clock.now
         let input: ElectricalSignoffInput
@@ -21,7 +21,7 @@ public struct DefaultESDEngine: ESDExecuting {
                 throw ElectricalSignoffError.insufficientTopology("ESD analysis requires extracted voltage domains")
             }
         } catch {
-            return support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let findings = analyze(input: input)
@@ -39,7 +39,7 @@ public struct DefaultESDEngine: ESDExecuting {
         do {
             return try await support.completedEnvelope(request: request, axis: axis, payload: payload, startedAt: startedAt)
         } catch {
-            return support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
     }
 

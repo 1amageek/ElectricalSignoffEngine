@@ -1,9 +1,8 @@
 import CircuiteFoundation
+import ElectricalSignoffCore
+import ElectricalSignoffEngine
 import Foundation
 import Testing
-import XcircuitePackage
-@testable import ElectricalSignoffCore
-@testable import ElectricalSignoffEngine
 
 @Suite("ElectricalSignoffEngine CircuiteFoundation integration")
 struct FoundationIntegrationTests {
@@ -13,86 +12,46 @@ struct FoundationIntegrationTests {
         let _: any Engine = engine
     }
 
-    @Test("project artifact references lower to immutable Foundation references")
-    func artifactReferenceProjectionPreservesIdentity() throws {
-        let reference = XcircuiteFileReference(
-            artifactID: "electrical-report",
+    @Test("electrical report artifacts use the shared Foundation identity")
+    func artifactReferenceUsesFoundationIdentity() throws {
+        let reference = try makeArtifact(
+            id: "electrical-report",
             path: ".xcircuite/runs/run-1/electrical/report.json",
+            role: .output,
             kind: .report,
             format: .json,
-            sha256: String(repeating: "a", count: 64),
+            hexadecimalDigest: String(repeating: "a", count: 64),
             byteCount: 64
         )
 
-        let foundation = try ElectricalSignoffFoundationArtifactBridge()
-            .reference(from: reference)
-
-        #expect(foundation.id.rawValue == "electrical-report")
-        #expect(foundation.locator.location.value == reference.path)
-        #expect(foundation.locator.kind.rawValue == "electrical-signoff.report")
-        #expect(foundation.locator.format == .json)
-        #expect(foundation.digest.hexadecimalValue == reference.sha256)
-        #expect(foundation.byteCount == 64)
+        #expect(reference.id.rawValue == "electrical-report")
+        #expect(reference.locator.location.value == ".xcircuite/runs/run-1/electrical/report.json")
+        #expect(reference.locator.role == .output)
+        #expect(reference.locator.kind == .report)
+        #expect(reference.locator.format == .json)
+        #expect(reference.digest.hexadecimalValue == String(repeating: "a", count: 64))
+        #expect(reference.byteCount == 64)
     }
 
-    @Test("invalid project paths are rejected by the Foundation bridge")
+    @Test("invalid project paths are rejected by the Foundation location")
     func artifactPathTraversalIsRejected() {
-        let reference = XcircuiteFileReference(
-            artifactID: "outside",
-            path: "../outside.json",
-            kind: .report,
-            format: .json,
-            sha256: String(repeating: "a", count: 64),
-            byteCount: 1
-        )
-
-        #expect(throws: ElectricalSignoffFoundationArtifactBridgeError.self) {
-            try ElectricalSignoffFoundationArtifactBridge().reference(from: reference)
+        #expect(throws: ArtifactLocationError.self) {
+            _ = try ArtifactLocation(workspaceRelativePath: "../outside.json")
         }
     }
 
     @Test("result evidence exposes artifacts and typed diagnostics")
     func resultProjectsToFoundationEvidence() throws {
-        let report = XcircuiteFileReference(
-            artifactID: "electrical-report",
+        let report = try makeArtifact(
+            id: "electrical-report",
             path: ".xcircuite/runs/run-1/electrical/report.json",
+            role: .output,
             kind: .report,
             format: .json,
-            sha256: String(repeating: "b", count: 64),
+            hexadecimalDigest: String(repeating: "b", count: 64),
             byteCount: 16
         )
         let instant = Date(timeIntervalSince1970: 100)
-        let envelope = XcircuiteEngineResultEnvelope(
-            schemaVersion: 1,
-            runID: "run-1",
-            status: .completed,
-            diagnostics: [
-                XcircuiteEngineDiagnostic(
-                    severity: .warning,
-                    code: "electrical.test.warning",
-                    message: "Review the retained electrical evidence.",
-                    entity: "M1",
-                    suggestedActions: ["inspect-evidence"]
-                )
-            ],
-            artifacts: [report],
-            metadata: XcircuiteEngineExecutionMetadata(
-                engineID: "ElectricalSignoffEngine.erc",
-                implementationID: "native-erc",
-                implementationVersion: "1",
-                startedAt: instant,
-                completedAt: instant
-            ),
-            payload: ElectricalSignoffPayload(
-                violationCount: 0,
-                axis: .erc
-            )
-        )
-        let result = ElectricalSignoffRunResult(
-            runID: "run-1",
-            status: .completed,
-            axisResults: [.erc: envelope]
-        )
         let provenance = try ExecutionProvenance(
             producer: try ProducerIdentity(
                 kind: .engine,
@@ -101,6 +60,29 @@ struct FoundationIntegrationTests {
             ),
             startedAt: instant,
             completedAt: instant
+        )
+        let diagnostic = DesignDiagnostic(
+            code: try DiagnosticCode(rawValue: "electrical.test.warning"),
+            severity: .warning,
+            summary: "Review the retained electrical evidence.",
+            detail: "entity=M1"
+        )
+        let axisResult = ElectricalSignoffResult(
+            schemaVersion: ElectricalSignoffEngineAPI.contractVersion,
+            runID: "run-1",
+            status: .completed,
+            diagnostics: [diagnostic],
+            artifacts: [report],
+            metadata: provenance,
+            payload: ElectricalSignoffPayload(
+                violationCount: 0,
+                axis: .erc
+            )
+        )
+        let result = ElectricalSignoffRunResult(
+            runID: "run-1",
+            status: .completed,
+            axisResults: [.erc: axisResult]
         )
 
         let evidence = try ElectricalSignoffFoundationEvidence(
@@ -115,4 +97,29 @@ struct FoundationIntegrationTests {
         #expect(evidence.diagnostics[0].severity == .warning)
         #expect(evidence.diagnostics[0].detail == "entity=M1")
     }
+}
+
+private func makeArtifact(
+    id: String,
+    path: String,
+    role: ArtifactRole,
+    kind: ArtifactKind,
+    format: ArtifactFormat,
+    hexadecimalDigest: String,
+    byteCount: UInt64
+) throws -> ArtifactReference {
+    try ArtifactReference(
+        id: ArtifactID(rawValue: id),
+        locator: ArtifactLocator(
+            location: ArtifactLocation(workspaceRelativePath: path),
+            role: role,
+            kind: kind,
+            format: format
+        ),
+        digest: ContentDigest(
+            algorithm: .sha256,
+            hexadecimalValue: hexadecimalDigest
+        ),
+        byteCount: byteCount
+    )
 }

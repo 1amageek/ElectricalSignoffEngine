@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffExecutionSupport: Sendable {
     public let loader: any ElectricalTopologyLoading
@@ -44,7 +44,7 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         axis: ElectricalSignoffAnalysisAxis,
         payload: ElectricalSignoffPayload,
         startedAt: Date
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    ) async throws -> ElectricalSignoffResult {
         let data: Data
         do {
             let encoder = JSONEncoder()
@@ -59,13 +59,13 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             runID: request.runID,
             axis: axis
         )
-        return XcircuiteEngineResultEnvelope(
+        return ElectricalSignoffResult(
             schemaVersion: ElectricalSignoffRequest.currentSchemaVersion,
             runID: request.runID,
             status: .completed,
-            diagnostics: diagnostics(from: payload.findings),
+            diagnostics: try diagnostics(from: payload.findings),
             artifacts: [artifact],
-            metadata: metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: payload
         )
     }
@@ -75,14 +75,14 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         axis: ElectricalSignoffAnalysisAxis,
         error: Error,
         startedAt: Date
-    ) -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
-        let diagnostic = diagnostic(for: error, severity: .error)
-        return XcircuiteEngineResultEnvelope(
+    ) throws -> ElectricalSignoffResult {
+        let diagnostic = try diagnostic(for: error, severity: .error)
+        return ElectricalSignoffResult(
             schemaVersion: ElectricalSignoffRequest.currentSchemaVersion,
             runID: request.runID,
             status: .blocked,
             diagnostics: [diagnostic],
-            metadata: metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -97,14 +97,14 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         axis: ElectricalSignoffAnalysisAxis,
         error: Error,
         startedAt: Date
-    ) -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
-        let diagnostic = diagnostic(for: error, severity: .error)
-        return XcircuiteEngineResultEnvelope(
+    ) throws -> ElectricalSignoffResult {
+        let diagnostic = try diagnostic(for: error, severity: .error)
+        return ElectricalSignoffResult(
             schemaVersion: ElectricalSignoffRequest.currentSchemaVersion,
             runID: request.runID,
             status: .failed,
             diagnostics: [diagnostic],
-            metadata: metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -121,15 +121,21 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             pdkDigest: input.topology.pdkDigest,
             parasiticDigest: input.topology.parasiticDigest,
             topCell: input.topology.topCell,
-            inputArtifactIDs: input.verifiedReferences.compactMap(\.artifactID)
+            inputArtifactIDs: input.verifiedReferences.map(\.artifactID)
         )
     }
 
-    private func metadata(axis: ElectricalSignoffAnalysisAxis, runID: String, startedAt: Date) -> XcircuiteEngineExecutionMetadata {
-        XcircuiteEngineExecutionMetadata(
-            engineID: "ElectricalSignoffEngine.\(axis.rawValue)",
-            implementationID: "native-\(axis.rawValue)",
-            implementationVersion: implementationVersion,
+    private func metadata(axis: ElectricalSignoffAnalysisAxis, runID: String, startedAt: Date) throws -> ExecutionProvenance {
+        let producer = try ProducerIdentity(
+            kind: .engine,
+            identifier: "electrical-signoff.\(axis.rawValue)",
+            version: implementationVersion
+        )
+        return try ExecutionProvenance(
+            producer: producer,
+            invocation: try ExecutionInvocation.inProcess(
+                entryPoint: "ElectricalSignoffEngine.\(axis.rawValue)"
+            ),
             startedAt: startedAt,
             completedAt: clock.now
         )
@@ -155,33 +161,41 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
     }
 
     private func identifierDigest(_ value: String) -> String {
-        String(XcircuiteHasher().sha256(data: Data(value.utf8)).prefix(12))
+        String(value.utf8.reduce(into: UInt64(1469598103934665603)) { hash, byte in
+            hash ^= UInt64(byte)
+            hash = hash &* 1099511628211
+        }, radix: 16).prefix(12).description
     }
 
-    private func diagnostics(from findings: [ElectricalSignoffPayload.Finding]) -> [XcircuiteEngineDiagnostic] {
-        findings.map { finding in
-            XcircuiteEngineDiagnostic(
+    private func diagnostics(from findings: [ElectricalSignoffPayload.Finding]) throws -> [DesignDiagnostic] {
+        try findings.map { finding in
+            try DesignDiagnostic(
+                code: DiagnosticCode(rawValue: finding.code),
                 severity: finding.severity,
-                code: finding.code,
-                message: finding.message,
-                entity: finding.entity,
-                suggestedActions: finding.suggestedActions
+                summary: finding.message,
+                detail: finding.entity.map { "entity=\($0)" },
+                suggestedActions: finding.suggestedActions.map {
+                    SuggestedAction(code: $0, summary: $0)
+                }
             )
         }
     }
 
-    private func diagnostic(for error: Error, severity: XcircuiteEngineDiagnosticSeverity) -> XcircuiteEngineDiagnostic {
+    private func diagnostic(for error: Error, severity: DiagnosticSeverity) throws -> DesignDiagnostic {
         let code: String
         if let signoffError = error as? ElectricalSignoffError {
             code = diagnosticCode(for: signoffError)
         } else {
             code = "electrical.execution.failed"
         }
-        return XcircuiteEngineDiagnostic(
+        return try DesignDiagnostic(
+            code: DiagnosticCode(rawValue: code),
             severity: severity,
-            code: code,
-            message: error.localizedDescription,
-            suggestedActions: ["inspect_input_artifact_provenance", "retain_the_blocked_run_artifacts"]
+            summary: error.localizedDescription,
+            suggestedActions: [
+                SuggestedAction(code: "inspect_input_artifact_provenance", summary: "Inspect input artifact provenance."),
+                SuggestedAction(code: "retain_the_blocked_run_artifacts", summary: "Retain blocked run artifacts.")
+            ]
         )
     }
 

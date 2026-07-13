@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public protocol ElectricalArtifactStoring: Sendable {
     func store(
@@ -7,5 +7,5 @@ public protocol ElectricalArtifactStoring: Sendable {
         artifactID: String,
         runID: String,
         axis: ElectricalSignoffAnalysisAxis
-    ) async throws -> XcircuiteFileReference
+    ) async throws -> ArtifactReference
 }

@@ -17,7 +17,6 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../CircuiteFoundation"),
-        .package(path: "../XcircuitePackage"),
         .package(path: "../LogicDesign"),
         .package(path: "../PDKKit"),
         .package(path: "../PhysicalDesignEngine"),
@@ -29,7 +28,6 @@ let package = Package(
             name: "ElectricalSignoffCore",
             dependencies: [
                 .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
-                .product(name: "XcircuitePackage", package: "XcircuitePackage"),
                 .product(name: "LogicIR", package: "LogicDesign"),
                 .product(name: "PowerIntent", package: "LogicDesign"),
                 .product(name: "PDKCore", package: "PDKKit"),
@@ -40,23 +38,23 @@ let package = Package(
         ),
         .target(
             name: "PowerIntegrityEngine",
-            dependencies: [.product(name: "XcircuitePackage", package: "XcircuitePackage"), "ElectricalSignoffCore"]
+            dependencies: [.product(name: "CircuiteFoundation", package: "CircuiteFoundation"), "ElectricalSignoffCore"]
         ),
         .target(
             name: "ERCEngine",
-            dependencies: [.product(name: "XcircuitePackage", package: "XcircuitePackage"), "ElectricalSignoffCore"]
+            dependencies: [.product(name: "CircuiteFoundation", package: "CircuiteFoundation"), "ElectricalSignoffCore"]
         ),
         .target(
             name: "ESDEngine",
-            dependencies: [.product(name: "XcircuitePackage", package: "XcircuitePackage"), "ElectricalSignoffCore"]
+            dependencies: [.product(name: "CircuiteFoundation", package: "CircuiteFoundation"), "ElectricalSignoffCore"]
         ),
         .target(
             name: "LatchUpEngine",
-            dependencies: [.product(name: "XcircuitePackage", package: "XcircuitePackage"), "ElectricalSignoffCore"]
+            dependencies: [.product(name: "CircuiteFoundation", package: "CircuiteFoundation"), "ElectricalSignoffCore"]
         ),
         .target(
             name: "AgingEngine",
-            dependencies: [.product(name: "XcircuitePackage", package: "XcircuitePackage"), "ElectricalSignoffCore"]
+            dependencies: [.product(name: "CircuiteFoundation", package: "CircuiteFoundation"), "ElectricalSignoffCore"]
         ),
         .target(
             name: "ElectricalSignoffEngine",
@@ -76,7 +74,7 @@ let package = Package(
                 "ElectricalSignoffCore",
                 "ElectricalSignoffEngine",
                 .product(name: "ToolQualification", package: "ToolQualification"),
-                .product(name: "XcircuitePackage", package: "XcircuitePackage"),
+                .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
             ]
         ),
         .executableTarget(
@@ -111,7 +109,6 @@ let package = Package(
                 .product(name: "PDKCore", package: "PDKKit"),
                 .product(name: "PhysicalDesignCore", package: "PhysicalDesignEngine"),
                 .product(name: "ToolQualification", package: "ToolQualification"),
-                .product(name: "XcircuitePackage", package: "XcircuitePackage"),
                 .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
             ]
         ),

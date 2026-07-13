@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import XcircuitePackage
+import CircuiteFoundation
 import LogicIR
 import PowerIntent
 import PDKCore
@@ -64,7 +64,7 @@ struct ExtractionTests {
             artifactID: "pdk"
         )
         let processRules = ElectricalProcessRuleSet(
-            pdkDigest: pdkReference.sha256 ?? "",
+            pdkDigest: pdkReference.sha256,
             processID: "fixture",
             pdkVersion: "1",
             cornerRules: fixture.sources.processRules?.cornerRules ?? []
@@ -99,7 +99,7 @@ struct ExtractionTests {
         let parasiticReference = try ExtractionFixture.write(
             data: try JSONEncoder().encode(parasitic),
             path: "parasitics.json",
-            kind: .parasitic,
+            kind: .parasitics,
             root: root,
             artifactID: "parasitics"
         )
@@ -112,9 +112,9 @@ struct ExtractionTests {
         )
         let request = ElectricalSignoffRequest(
             runID: fixture.request.runID,
-            inputs: [],
+            inputs: [designReference, powerIntentReference],
             design: LogicDesignReference(
-                artifact: designReference,
+                artifact: designReference.locator,
                 topDesignName: "top",
                 designDigest: fixture.request.design.designDigest
             ),
@@ -127,10 +127,10 @@ struct ExtractionTests {
                 manifest: pdkReference,
                 processID: "fixture",
                 version: "1",
-                digest: pdkReference.sha256 ?? ""
+                digest: pdkReference.sha256
             ),
             powerIntent: PowerIntentReference(
-                artifact: powerIntentReference,
+                artifact: powerIntentReference.locator,
                 designDigest: fixture.request.design.designDigest
             ),
             parasitics: parasiticReference,
@@ -169,7 +169,7 @@ struct ExtractionTests {
         let spefReference = try ExtractionFixture.write(
             data: Data(spef.utf8),
             path: "parasitics.spef",
-            kind: .parasitic,
+            kind: .parasitics,
             format: .spef,
             root: root,
             artifactID: "parasitics-spef"
@@ -285,14 +285,14 @@ private struct ExtractionFixture: Sendable {
                 minimumESDResistanceOhm: 1
             )
         )
-        let designReference = XcircuiteFileReference(path: "design.json", kind: .netlist, format: .json)
-        let physicalReference = XcircuiteFileReference(path: "physical.json", kind: .layout, format: .json)
-        let pdkReference = XcircuiteFileReference(path: "pdk.json", kind: .technology, format: .json)
+        let designReference = try ExtractionFixture.reference(path: "design.json", kind: .netlist, format: .json)
+        let physicalReference = try ExtractionFixture.reference(path: "physical.json", kind: .layout, format: .json)
+        let pdkReference = try ExtractionFixture.reference(path: "pdk.json", kind: .technology, format: .json)
         let request = ElectricalSignoffRequest(
             runID: "extraction-fixture",
-            inputs: [],
+            inputs: [designReference],
             design: LogicDesignReference(
-                artifact: designReference,
+                artifact: designReference.locator,
                 topDesignName: "top",
                 designDigest: design.designDigest ?? ""
             ),
@@ -307,12 +307,12 @@ private struct ExtractionFixture: Sendable {
                 version: "1",
                 digest: "pdk-fixture"
             ),
-            topologyProfileArtifact: XcircuiteFileReference(
+            topologyProfileArtifact: try ExtractionFixture.reference(
                 path: "topology-profile.json",
                 kind: .other,
                 format: .json
             ),
-            processRuleArtifact: XcircuiteFileReference(
+            processRuleArtifact: try ExtractionFixture.reference(
                 path: "process-rules.json",
                 kind: .technology,
                 format: .json
@@ -344,21 +344,45 @@ private struct ExtractionFixture: Sendable {
     fileprivate static func write(
         data: Data,
         path: String,
-        kind: XcircuiteFileKind,
-        format: XcircuiteFileFormat = .json,
+        kind: ArtifactKind,
+        format: ArtifactFormat = .json,
         root: URL,
         artifactID: String
-    ) throws -> XcircuiteFileReference {
+    ) throws -> ArtifactReference {
         let url = root.appending(path: path)
         try data.write(to: url)
-        let reference = XcircuiteFileReference(
-            artifactID: artifactID,
-            path: path,
-            kind: kind,
-            format: format,
-            sha256: XcircuiteHasher().sha256(data: data),
-            byteCount: Int64(data.count)
+        let reference = try ArtifactReference(
+            id: ArtifactID(rawValue: artifactID),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: path),
+                role: .input,
+                kind: kind,
+                format: format
+            ),
+            digest: SHA256ContentDigester().digest(data: data, using: .sha256),
+            byteCount: UInt64(data.count)
         )
         return reference
+    }
+
+    fileprivate static func reference(
+        path: String,
+        kind: ArtifactKind,
+        format: ArtifactFormat
+    ) throws -> ArtifactReference {
+        try ArtifactReference(
+            id: ArtifactID(rawValue: path.replacingOccurrences(of: ".", with: "-")),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: path),
+                role: .input,
+                kind: kind,
+                format: format
+            ),
+            digest: ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: String(repeating: "a", count: 64)
+            ),
+            byteCount: 1
+        )
     }
 }

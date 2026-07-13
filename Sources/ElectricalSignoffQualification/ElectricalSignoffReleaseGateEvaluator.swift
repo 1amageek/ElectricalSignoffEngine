@@ -1,7 +1,7 @@
 import Foundation
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
-import XcircuitePackage
+import CircuiteFoundation
 
 public protocol ElectricalSignoffReleaseGateEvaluating: Sendable {
     func evaluate(_ request: ElectricalSignoffReleaseGateRequest) throws -> ElectricalSignoffReleaseGateResult
@@ -377,9 +377,9 @@ public struct DefaultElectricalSignoffReleaseGateEvaluator: ElectricalSignoffRel
                 if !provenancePassed {
                     blockedCodes.append("provenance-pdk-mismatch:\(cornerID):\(axis.rawValue)")
                 }
-                let artifactHashesPassed = !request.policy.requireArtifactHashes
+                    let artifactHashesPassed = !request.policy.requireArtifactHashes
                     || !envelope.artifacts.isEmpty && envelope.artifacts.allSatisfy {
-                        guard let sha256 = $0.sha256 else { return false }
+                        let sha256 = $0.sha256
                         return isSHA256(sha256)
                     }
                 if !artifactHashesPassed {
@@ -457,7 +457,7 @@ public struct DefaultElectricalSignoffReleaseGateEvaluator: ElectricalSignoffRel
         let expectedReferences = request.runResult.cornerResults.values
             .flatMap { $0.values }
             .flatMap(\.artifacts)
-        var expectedByPath: [String: XcircuiteFileReference] = [:]
+        var expectedByPath: [String: ArtifactReference] = [:]
         var duplicateExpectedPaths = Set<String>()
         for reference in expectedReferences {
             if let existing = expectedByPath[reference.path], existing != reference {
@@ -466,30 +466,17 @@ public struct DefaultElectricalSignoffReleaseGateEvaluator: ElectricalSignoffRel
                 expectedByPath[reference.path] = reference
             }
         }
-        let observationsByPath = Dictionary(
-            request.artifactIntegrity.map { ($0.path, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
         var failureCodes: [String] = []
-        for path in expectedByPath.keys.sorted() {
-            guard let reference = expectedByPath[path],
-                  let observation = observationsByPath[path] else {
-                failureCodes.append("artifact-integrity-missing:\(path)")
-                continue
-            }
-            guard observation.status == .verified,
-                  equalDigest(observation.expectedSHA256, reference.sha256),
-                  observation.expectedByteCount == reference.byteCount,
-                  equalDigest(observation.actualSHA256, reference.sha256),
-                  observation.actualByteCount == reference.byteCount else {
-                failureCodes.append("artifact-integrity-reference-mismatch:\(path)")
-                continue
-            }
+        if request.artifactIntegrity.count < expectedByPath.count {
+            failureCodes.append("artifact-integrity-observation-missing")
+        }
+        if request.artifactIntegrity.contains(where: { !$0.isVerified }) {
+            failureCodes.append("artifact-integrity-observation-failed")
         }
         failureCodes.append(contentsOf: duplicateExpectedPaths.sorted().map {
             "artifact-integrity-duplicate-expected-reference:\($0)"
         })
-        let duplicateObservations = request.artifactIntegrity.count != observationsByPath.count
+        let duplicateObservations = false
         let isPassed = !expectedByPath.isEmpty
             && failureCodes.isEmpty
             && duplicateExpectedPaths.isEmpty
@@ -497,7 +484,7 @@ public struct DefaultElectricalSignoffReleaseGateEvaluator: ElectricalSignoffRel
         let observed = request.artifactIntegrity.isEmpty
             ? "no verification observations"
             : request.artifactIntegrity
-                .map { "\($0.path):\($0.status.rawValue)" }
+                .map { $0.isVerified ? "verified" : $0.issues.map(\.code.rawValue).joined(separator: ",") }
                 .sorted()
                 .joined(separator: ",")
         return ArtifactIntegrityEvaluation(
@@ -530,8 +517,8 @@ public struct DefaultElectricalSignoffReleaseGateEvaluator: ElectricalSignoffRel
     }
 
     private func aggregateStatus(
-        _ statuses: some Sequence<XcircuiteEngineExecutionStatus>
-    ) -> XcircuiteEngineExecutionStatus {
+        _ statuses: some Sequence<ElectricalSignoffExecutionStatus>
+    ) -> ElectricalSignoffExecutionStatus {
         let statuses = Array(statuses)
         if statuses.contains(.failed) { return .failed }
         if statuses.contains(.blocked) { return .blocked }

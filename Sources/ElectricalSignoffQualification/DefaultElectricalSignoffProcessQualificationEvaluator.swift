@@ -222,7 +222,7 @@ public struct DefaultElectricalSignoffProcessQualificationEvaluator: ElectricalS
             oracleEvidenceIDs: processEvidence.oracleEvidence.map(\.evidenceID),
             healthEvidenceIDs: processEvidence.healthEvidence.map(\.evidenceID),
             approvalEvidenceIDs: processEvidence.approvalEvidence.map(\.evidenceID),
-            evidenceArtifactIDs: processEvidence.evidenceArtifacts.compactMap { $0.artifactID ?? $0.path },
+            evidenceArtifactIDs: processEvidence.evidenceArtifacts.map { $0.artifactID },
             independenceVerified: false,
             blockers: blockers
         )

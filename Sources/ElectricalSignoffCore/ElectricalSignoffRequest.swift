@@ -1,38 +1,38 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import LogicIR
 import PowerIntent
 import PDKCore
 import PhysicalDesignCore
 
-public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
+public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
     public static let currentSchemaVersion = 1
 
     public var schemaVersion: Int
     public var runID: String
-    public var inputs: [XcircuiteFileReference]
+    public var inputs: [ArtifactReference]
 
     public var design: LogicDesignReference
     public var physicalDesign: PhysicalDesignReference
     public var pdk: PDKReference
     public var powerIntent: PowerIntentReference?
-    public var parasitics: XcircuiteFileReference?
-    public var topologyArtifact: XcircuiteFileReference?
-    public var topologyProfileArtifact: XcircuiteFileReference?
-    public var processRuleArtifact: XcircuiteFileReference?
+    public var parasitics: ArtifactReference?
+    public var topologyArtifact: ArtifactReference?
+    public var topologyProfileArtifact: ArtifactReference?
+    public var processRuleArtifact: ArtifactReference?
     public var configuration: ElectricalSignoffConfiguration
 
     public init(
         runID: String,
-        inputs: [XcircuiteFileReference],
+        inputs: [ArtifactReference],
         design: LogicDesignReference,
         physicalDesign: PhysicalDesignReference,
         pdk: PDKReference,
         powerIntent: PowerIntentReference? = nil,
-        parasitics: XcircuiteFileReference? = nil,
-        topologyArtifact: XcircuiteFileReference? = nil,
-        topologyProfileArtifact: XcircuiteFileReference? = nil,
-        processRuleArtifact: XcircuiteFileReference? = nil,
+        parasitics: ArtifactReference? = nil,
+        topologyArtifact: ArtifactReference? = nil,
+        topologyProfileArtifact: ArtifactReference? = nil,
+        processRuleArtifact: ArtifactReference? = nil,
         configuration: ElectricalSignoffConfiguration = ElectricalSignoffConfiguration()
     ) {
         self.schemaVersion = Self.currentSchemaVersion
@@ -68,15 +68,15 @@ public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         runID = try container.decode(String.self, forKey: .runID)
-        inputs = try container.decode([XcircuiteFileReference].self, forKey: .inputs)
+        inputs = try container.decode([ArtifactReference].self, forKey: .inputs)
         design = try container.decode(LogicDesignReference.self, forKey: .design)
         physicalDesign = try container.decode(PhysicalDesignReference.self, forKey: .physicalDesign)
         pdk = try container.decode(PDKReference.self, forKey: .pdk)
         powerIntent = try container.decodeIfPresent(PowerIntentReference.self, forKey: .powerIntent)
-        parasitics = try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .parasitics)
-        topologyArtifact = try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .topologyArtifact)
-        topologyProfileArtifact = try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .topologyProfileArtifact)
-        processRuleArtifact = try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .processRuleArtifact)
+        parasitics = try container.decodeIfPresent(ArtifactReference.self, forKey: .parasitics)
+        topologyArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .topologyArtifact)
+        topologyProfileArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .topologyProfileArtifact)
+        processRuleArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .processRuleArtifact)
         configuration = try container.decodeIfPresent(ElectricalSignoffConfiguration.self, forKey: .configuration)
             ?? ElectricalSignoffConfiguration()
     }
@@ -90,14 +90,16 @@ public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
                 "runID must be a non-empty path-safe component"
             )
         }
-        try validate(reference: design.artifact, role: "design")
+        try validate(locator: design.artifact, role: "design")
         try validate(reference: physicalDesign.layoutArtifact, role: "physical-design")
         try validate(reference: pdk.manifest, role: "pdk")
+        _ = try materializedArtifact(for: design.artifact, role: "design")
         for reference in inputs {
             try validate(reference: reference, role: "input")
         }
         if let powerIntent {
-            try validate(reference: powerIntent.artifact, role: "power-intent")
+            try validate(locator: powerIntent.artifact, role: "power-intent")
+            _ = try materializedArtifact(for: powerIntent.artifact, role: "power-intent")
             guard powerIntent.designDigest == design.designDigest else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent design",
@@ -127,7 +129,7 @@ public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
                 "design, physical design and PDK identities are required"
             )
         }
-        var referencesByPath: [String: XcircuiteFileReference] = [:]
+        var referencesByPath: [String: ArtifactReference] = [:]
         for reference in allReferences {
             if let existing = referencesByPath[reference.path], !compatibleArtifactReferences(existing, reference) {
                 throw ElectricalSignoffError.conflictingArtifactReferences(path: reference.path)
@@ -137,14 +139,10 @@ public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
         try configuration.validate()
     }
 
-    private var allReferences: [XcircuiteFileReference] {
+    private var allReferences: [ArtifactReference] {
         var references = inputs
-        references.append(design.artifact)
         references.append(physicalDesign.layoutArtifact)
         references.append(pdk.manifest)
-        if let powerIntent {
-            references.append(powerIntent.artifact)
-        }
         if let parasitics {
             references.append(parasitics)
         }
@@ -160,30 +158,68 @@ public struct ElectricalSignoffRequest: XcircuiteEngineRequest {
         return references
     }
 
-    private func validate(reference: XcircuiteFileReference, role: String) throws {
+    private func validate(reference: ArtifactReference, role: String) throws {
         guard !reference.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffError.invalidRequest("\(role) artifact path is required")
         }
-        if let artifactID = reference.artifactID,
-           artifactID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        guard !reference.artifactID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffError.invalidRequest("\(role) artifact ID must not be empty")
         }
-        if let byteCount = reference.byteCount, byteCount < 0 {
+        guard reference.byteCount >= 0 else {
             throw ElectricalSignoffError.invalidRequest("\(role) artifact byte count must not be negative")
         }
     }
 
+    private func validate(locator: ArtifactLocator, role: String) throws {
+        let path = locator.location.value
+        guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ElectricalSignoffError.invalidRequest("\(role) artifact path is required")
+        }
+    }
+
+    /// Resolves a locator to the digest-bearing artifact supplied by the
+    /// caller. Design and power-intent references intentionally contain only
+    /// locators; their immutable identity is carried in `inputs`.
+    public func materializedArtifact(
+        for locator: ArtifactLocator,
+        role: String = "input"
+    ) throws -> ArtifactReference {
+        if let reference = materializedReferences.first(where: { $0.locator == locator }) {
+            return reference
+        }
+        throw ElectricalSignoffError.invalidRequest(
+            "\(role) artifact locator must have a matching digest-bearing input artifact"
+        )
+    }
+
+    private var materializedReferences: [ArtifactReference] {
+        var references = inputs
+        references.append(physicalDesign.layoutArtifact)
+        references.append(pdk.manifest)
+        if let parasitics {
+            references.append(parasitics)
+        }
+        if let topologyArtifact {
+            references.append(topologyArtifact)
+        }
+        if let topologyProfileArtifact {
+            references.append(topologyProfileArtifact)
+        }
+        if let processRuleArtifact {
+            references.append(processRuleArtifact)
+        }
+        return references
+    }
+
     private func compatibleArtifactReferences(
-        _ lhs: XcircuiteFileReference,
-        _ rhs: XcircuiteFileReference
+        _ lhs: ArtifactReference,
+        _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if let lhsDigest = lhs.sha256, let rhsDigest = rhs.sha256,
-           lhsDigest.caseInsensitiveCompare(rhsDigest) != .orderedSame {
+        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
             return false
         }
-        if let lhsByteCount = lhs.byteCount, let rhsByteCount = rhs.byteCount,
-           lhsByteCount != rhsByteCount {
+        if lhs.byteCount != rhs.byteCount {
             return false
         }
         return true

@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
@@ -16,7 +16,7 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
 
     public func execute(
         _ request: ElectricalSignoffRequest
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    ) async throws -> ElectricalSignoffResult {
         let axis: ElectricalSignoffAnalysisAxis = .powerIntegrity
         let startedAt = support.clock.now
         let input: ElectricalSignoffInput
@@ -29,7 +29,7 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
                 throw ElectricalSignoffError.insufficientTopology("power integrity requires extracted segments, sources and loads")
             }
         } catch {
-            return support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let vectorScale = input.topology.activityVectors.map(\.peakScale).max() ?? 1
@@ -52,7 +52,7 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
                 voltageScale: condition.supplyVoltageScale
             )
         } catch {
-            return support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let staticDrop = worstDrop(topology: input.topology, solution: staticSolution)
@@ -213,7 +213,7 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
         do {
             return try await support.completedEnvelope(request: request, axis: axis, payload: payload, startedAt: startedAt)
         } catch {
-            return support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
     }
 

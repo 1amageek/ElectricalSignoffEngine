@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultAgingEngine: AgingAnalyzing {
@@ -11,7 +11,7 @@ public struct DefaultAgingEngine: AgingAnalyzing {
 
     public func execute(
         _ request: ElectricalSignoffRequest
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    ) async throws -> ElectricalSignoffResult {
         let axis: ElectricalSignoffAnalysisAxis = .aging
         let startedAt = support.clock.now
         let input: ElectricalSignoffInput
@@ -21,7 +21,7 @@ public struct DefaultAgingEngine: AgingAnalyzing {
                 throw ElectricalSignoffError.insufficientTopology("aging analysis requires NBTI, HCI or TDDB model declarations")
             }
         } catch {
-            return support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let result = analyze(input: input)
@@ -39,7 +39,7 @@ public struct DefaultAgingEngine: AgingAnalyzing {
         do {
             return try await support.completedEnvelope(request: request, axis: axis, payload: payload, startedAt: startedAt)
         } catch {
-            return support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
     }
 

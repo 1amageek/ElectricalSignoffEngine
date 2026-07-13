@@ -1,15 +1,15 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffInput: Sendable, Hashable, Codable {
     public var request: ElectricalSignoffRequest
     public var topology: ElectricalTopology
-    public var verifiedReferences: [XcircuiteFileReference]
+    public var verifiedReferences: [ArtifactReference]
 
     public init(
         request: ElectricalSignoffRequest,
         topology: ElectricalTopology,
-        verifiedReferences: [XcircuiteFileReference]
+        verifiedReferences: [ArtifactReference]
     ) {
         self.request = request
         self.topology = topology

@@ -1,5 +1,6 @@
 import Foundation
-import XcircuitePackage
+import CryptoKit
+import CircuiteFoundation
 import LogicIR
 import PowerIntent
 import PDKCore
@@ -10,7 +11,7 @@ import PEXParsers
 public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoading {
     public let projectRoot: URL
     public let verifyIntegrity: Bool
-    private let foundationArtifactBridge = ElectricalSignoffFoundationArtifactBridge()
+    private let foundationArtifactBridge = ElectricalArtifactAccess()
 
     public init(projectRoot: URL, verifyIntegrity: Bool = true) {
         self.projectRoot = projectRoot.standardizedFileURL
@@ -30,7 +31,11 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
             try verify(reference)
         }
 
-        let designData = try read(request.design.artifact, source: "design")
+        let designReference = try request.materializedArtifact(
+            for: request.design.artifact,
+            role: "design"
+        )
+        let designData = try read(designReference, source: "design")
         let physicalData = try read(request.physicalDesign.layoutArtifact, source: "physical-design")
         let pdkData = try read(request.pdk.manifest, source: "pdk")
         let profileData = try read(profileReference, source: "topology-profile")
@@ -41,10 +46,10 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         }
         let processRuleData = try read(processRuleReference, source: "process-rules")
 
-        guard request.design.artifact.format == .json else {
+        guard designReference.format == .json else {
             throw ElectricalSignoffError.unsupportedSourceFormat(
                 source: "design",
-                format: request.design.artifact.format.rawValue
+                format: designReference.format.rawValue
             )
         }
         guard request.physicalDesign.layoutArtifact.format == .json else {
@@ -116,25 +121,25 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         )
     }
 
-    private func verify(_ reference: XcircuiteFileReference) throws {
+    private func verify(_ reference: ArtifactReference) throws {
         do {
             try foundationArtifactBridge.validate(
                 reference,
                 relativeTo: projectRoot,
                 verifyIntegrity: verifyIntegrity
             )
-        } catch let error as ElectricalSignoffFoundationArtifactBridgeError {
+        } catch let error as ElectricalArtifactAccessError {
             throw electricalError(for: reference, error: error)
         } catch {
             throw ElectricalSignoffError.artifactIntegrity(
                 path: reference.path,
-                status: .unreadableArtifact,
+                status: "unreadable-artifact",
                 message: error.localizedDescription
             )
         }
     }
 
-    private func read(_ reference: XcircuiteFileReference, source: String) throws -> Data {
+    private func read(_ reference: ArtifactReference, source: String) throws -> Data {
         guard reference.format == .json else {
             throw ElectricalSignoffError.unsupportedSourceFormat(
                 source: source,
@@ -150,7 +155,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         } catch {
             throw ElectricalSignoffError.artifactIntegrity(
                 path: reference.path,
-                status: .invalidPath,
+                status: "invalid-path",
                 message: error.localizedDescription
             )
         }
@@ -162,9 +167,10 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
     }
 
     private func loadPowerIntent(request: ElectricalSignoffRequest) throws -> PowerIntentDesign? {
-        guard let reference = request.powerIntent?.artifact else {
+        guard let powerIntent = request.powerIntent else {
             return nil
         }
+        let reference = try request.materializedArtifact(for: powerIntent.artifact, role: "power-intent")
         let data = try read(reference, source: "power-intent")
         do {
             return try JSONDecoder().decode(PowerIntentDesign.self, from: data)
@@ -235,7 +241,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         }
     }
 
-    private func resolve(_ reference: XcircuiteFileReference, source: String) throws -> URL {
+    private func resolve(_ reference: ArtifactReference, source: String) throws -> URL {
         do {
             return try foundationArtifactBridge.resolveURL(
                 for: reference,
@@ -244,7 +250,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         } catch {
             throw ElectricalSignoffError.artifactIntegrity(
                 path: reference.path,
-                status: .invalidPath,
+                status: "invalid-path",
                 message: "\(source) artifact path could not be resolved: \(error.localizedDescription)"
             )
         }
@@ -277,7 +283,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
             throw ElectricalSignoffError.digestMismatch(
                 kind: "PDK",
                 expected: request.pdk.digest,
-                actual: request.pdk.manifest.sha256 ?? "missing"
+                actual: request.pdk.manifest.sha256
             )
         }
         guard profile.schemaVersion == ElectricalTopologyExtractionProfile.currentSchemaVersion else {
@@ -326,31 +332,25 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
     }
 
     private func pdkIdentityMatches(request: ElectricalSignoffRequest, pdk: PDKManifest) -> Bool {
-        request.pdk.manifest.sha256?.caseInsensitiveCompare(request.pdk.digest) == .orderedSame
+        request.pdk.manifest.sha256.caseInsensitiveCompare(request.pdk.digest) == .orderedSame
             && pdk.processID == request.pdk.processID
             && pdk.version == request.pdk.version
     }
 
     private func electricalError(
-        for reference: XcircuiteFileReference,
-        error: ElectricalSignoffFoundationArtifactBridgeError
+        for reference: ArtifactReference,
+        error: ElectricalArtifactAccessError
     ) -> ElectricalSignoffError {
-        let status: XcircuiteFileReferenceIntegrityStatus
+        let status: String
         switch error {
         case .invalidReference:
-            status = .invalidPath
+            status = "invalid-location"
         case .missingArtifact:
-            status = .missingArtifact
-        case .notRegularFile, .unreadable:
-            status = .unreadableArtifact
-        case .digestMismatch:
-            status = .sha256Mismatch
-        case .byteCountMismatch:
-            status = .byteCountMismatch
-        case .missingDigest:
-            status = .missingDigest
-        case .missingByteCount:
-            status = .missingByteCount
+            status = "missing-file"
+        case .notRegularFile:
+            status = "not-regular-file"
+        case .integrityFailure:
+            status = "integrity-failure"
         }
         return ElectricalSignoffError.artifactIntegrity(
             path: reference.path,
@@ -361,14 +361,14 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
 
     private func uniqueReferences(
         for request: ElectricalSignoffRequest,
-        profileReference: XcircuiteFileReference
-    ) throws -> [XcircuiteFileReference] {
+        profileReference: ArtifactReference
+    ) throws -> [ArtifactReference] {
         var references = request.inputs
-        references.append(request.design.artifact)
+        references.append(try request.materializedArtifact(for: request.design.artifact, role: "design"))
         references.append(request.physicalDesign.layoutArtifact)
         references.append(request.pdk.manifest)
         if let powerIntent = request.powerIntent {
-            references.append(powerIntent.artifact)
+            references.append(try request.materializedArtifact(for: powerIntent.artifact, role: "power-intent"))
         }
         if let parasitics = request.parasitics {
             references.append(parasitics)
@@ -378,8 +378,8 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
             references.append(processRuleArtifact)
         }
 
-        var referencesByPath: [String: XcircuiteFileReference] = [:]
-        var unique: [XcircuiteFileReference] = []
+        var referencesByPath: [String: ArtifactReference] = [:]
+        var unique: [ArtifactReference] = []
         for reference in references {
             if let existing = referencesByPath[reference.path] {
                 guard compatibleArtifactReferences(existing, reference) else {
@@ -394,23 +394,21 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
     }
 
     private func compatibleArtifactReferences(
-        _ lhs: XcircuiteFileReference,
-        _ rhs: XcircuiteFileReference
+        _ lhs: ArtifactReference,
+        _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if let lhsDigest = lhs.sha256, let rhsDigest = rhs.sha256,
-           lhsDigest.caseInsensitiveCompare(rhsDigest) != .orderedSame {
+        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
             return false
         }
-        if let lhsByteCount = lhs.byteCount, let rhsByteCount = rhs.byteCount,
-           lhsByteCount != rhsByteCount {
+        if lhs.byteCount != rhs.byteCount {
             return false
         }
         return true
     }
 
     private func deterministicPEXRunID(for runID: String) -> PEXRunID {
-        let digest = XcircuiteHasher().sha256(data: Data(runID.utf8))
+        let digest = SHA256.hash(data: Data(runID.utf8)).map { String(format: "%02x", $0) }.joined()
         let uuidText = [
             String(digest.prefix(8)),
             String(digest.dropFirst(8).prefix(4)),

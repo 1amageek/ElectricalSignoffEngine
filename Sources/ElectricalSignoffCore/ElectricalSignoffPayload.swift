@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffPayload: Sendable, Hashable, Codable {
     public struct Metric: Sendable, Hashable, Codable {
@@ -20,7 +20,7 @@ public struct ElectricalSignoffPayload: Sendable, Hashable, Codable {
 
     public struct Finding: Sendable, Hashable, Codable {
         public var code: String
-        public var severity: XcircuiteEngineDiagnosticSeverity
+        public var severity: DiagnosticSeverity
         public var message: String
         public var entity: String?
         public var observedValue: Double?
@@ -29,7 +29,7 @@ public struct ElectricalSignoffPayload: Sendable, Hashable, Codable {
 
         public init(
             code: String,
-            severity: XcircuiteEngineDiagnosticSeverity,
+            severity: DiagnosticSeverity,
             message: String,
             entity: String? = nil,
             observedValue: Double? = nil,

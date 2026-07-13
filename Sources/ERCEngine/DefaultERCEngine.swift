@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultERCEngine: ERCExecuting {
@@ -11,14 +11,14 @@ public struct DefaultERCEngine: ERCExecuting {
 
     public func execute(
         _ request: ElectricalSignoffRequest
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    ) async throws -> ElectricalSignoffResult {
         let axis: ElectricalSignoffAnalysisAxis = .erc
         let startedAt = support.clock.now
         let input: ElectricalSignoffInput
         do {
             input = try await support.load(request: request)
         } catch {
-            return support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let findings = analyze(input: input)
@@ -45,7 +45,7 @@ public struct DefaultERCEngine: ERCExecuting {
         do {
             return try await support.completedEnvelope(request: request, axis: axis, payload: payload, startedAt: startedAt)
         } catch {
-            return support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
+            return try support.failedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
     }
 

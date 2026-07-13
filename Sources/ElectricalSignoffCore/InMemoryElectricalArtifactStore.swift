@@ -1,6 +1,6 @@
 import CircuiteFoundation
+import CryptoKit
 import Foundation
-import XcircuitePackage
 
 public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
     private var values: [String: Data] = [:]
@@ -13,18 +13,23 @@ public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
         artifactID: String,
         runID: String,
         axis: ElectricalSignoffAnalysisAxis
-    ) async throws -> XcircuiteFileReference {
+    ) async throws -> ArtifactReference {
         let key = "\(runID)/\(artifactID)"
         values[key] = data
         let digest = try digester.digest(data: data, using: .sha256)
-        return XcircuiteFileReference(
-            artifactID: artifactID,
-            path: "memory/\(runID)/\(safePathComponent(artifactID)).json",
+        let location = try ArtifactLocation(
+            workspaceRelativePath: "memory/\(runID)/\(safePathComponent(artifactID)).json"
+        )
+        let locator = ArtifactLocator(
+            location: location,
+            role: .output,
             kind: .report,
-            format: .json,
-            sha256: digest.hexadecimalValue,
-            byteCount: Int64(data.count),
-            producedByRunID: runID
+            format: .json
+        )
+        return ArtifactReference(
+            locator: locator,
+            digest: digest,
+            byteCount: UInt64(data.count)
         )
     }
 
@@ -47,6 +52,6 @@ public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
     }
 
     private func identifierDigest(_ value: String) -> String {
-        String(XcircuiteHasher().sha256(data: Data(value.utf8)).prefix(12))
+        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined().prefix(12).description
     }
 }

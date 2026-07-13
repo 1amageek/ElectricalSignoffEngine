@@ -78,7 +78,7 @@ public struct ElectricalSignoffRepairPlan: Sendable, Hashable, Codable {
         }
         let provenance = fallbackEnvelopes.compactMap { $0.payload.provenance }.first
         let sourceArtifactIDs = fallbackEnvelopes.flatMap { envelope in
-            envelope.artifacts.compactMap(\.artifactID)
+            envelope.artifacts.map(\.artifactID)
         }
         self.init(
             runID: runResult.runID,

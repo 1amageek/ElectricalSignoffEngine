@@ -1,10 +1,10 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public protocol PowerIntegrityAnalyzing: Sendable {
     func execute(
         _ request: ElectricalSignoffRequest
-    ) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>
+    ) async throws -> ElectricalSignoffResult
 }
 

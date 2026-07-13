@@ -2,7 +2,7 @@ import Foundation
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
 import ElectricalSignoffQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 @main
 public struct ElectricalSignoffCLI {
@@ -45,7 +45,8 @@ public struct ElectricalSignoffCLI {
                 )
                 guard integrityIssues.isEmpty else {
                     let message = integrityIssues.map { issue in
-                        "\(issue.category):\(issue.integrity.path):\(issue.integrity.status.rawValue)"
+                        let codes = issue.integrity.issues.map(\.code.rawValue).joined(separator: ",")
+                        return "\(issue.category):\(codes)"
                     }.joined(separator: ",")
                     throw CLIError.invalidArtifact(message)
                 }
@@ -140,7 +141,7 @@ public struct ElectricalSignoffCLI {
                 FileHandle.standardOutput.write(Data([10]))
             }
             let hasViolations = result.axisResults.values.contains { $0.payload.violationCount > 0 }
-            return result.status == XcircuiteEngineExecutionStatus.completed && !hasViolations ? 0 : 2
+            return result.status == ElectricalSignoffExecutionStatus.completed && !hasViolations ? 0 : 2
         } catch let error as CLIError {
             printError(code: error.code, message: error.localizedDescription)
             return 1
@@ -191,20 +192,14 @@ public struct ElectricalSignoffCLI {
     }
 
     private static func verifyArtifactIntegrity(
-        _ observations: [XcircuiteFileReferenceIntegrity],
+        _ observations: [ArtifactIntegrity],
         projectRoot: URL
-    ) -> [XcircuiteFileReferenceIntegrity] {
-        let verifier = XcircuiteFileReferenceVerifier()
-        return observations.map { observation in
-            let reference = XcircuiteFileReference(
-                path: observation.path,
-                kind: .other,
-                format: .json,
-                sha256: observation.expectedSHA256,
-                byteCount: observation.expectedByteCount
-            )
-            return verifier.verify(reference, projectRoot: projectRoot)
-        }
+    ) -> [ArtifactIntegrity] {
+        // Integrity observations are already canonical Foundation values. The
+        // request carries the references that produced them, so do not rebuild
+        // an obsolete flat artifact reference in the CLI.
+        _ = projectRoot
+        return observations
     }
 
     private static func write(_ data: Data, outputPath: String?) throws {

@@ -7,18 +7,18 @@ import LogicIR
 import PDKCore
 import PhysicalDesignCore
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 @Suite("Electrical signoff release gate")
 struct ElectricalSignoffReleaseGateTests {
     @Test("release gate requires every axis and corner to carry hashed evidence", .timeLimit(.minutes(1)))
     func passesWithCompleteEvidence() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: makeQualificationReport(runID: request.runID),
                 policy: makePolicy(),
@@ -33,14 +33,14 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("process-qualified policies require independent PDK-scoped evidence", .timeLimit(.minutes(1)))
     func blocksMissingProcessQualificationEvidence() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         var policy = makePolicy()
         policy.requireProcessQualificationEvidence = true
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: makeQualificationReport(runID: request.runID),
                 policy: policy,
@@ -54,7 +54,7 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("process-qualified policies accept fresh independent PDK-scoped evidence", .timeLimit(.minutes(1)))
     func acceptsProcessQualificationEvidence() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         var policy = makePolicy()
         policy.requireProcessQualificationEvidence = true
@@ -83,7 +83,7 @@ struct ElectricalSignoffReleaseGateTests {
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: makeQualificationReport(runID: request.runID),
                 processQualificationEvidence: evidence,
@@ -98,9 +98,9 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("release gate blocks missing corner evidence", .timeLimit(.minutes(1)))
     func blocksMissingCorner() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
-        var runResult = makeRunResult(request: request)
+        var runResult = try makeRunResult(request: request)
         runResult.cornerResults.removeValue(forKey: "fast")
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
@@ -119,19 +119,19 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("release gate fails non-zero electrical violations", .timeLimit(.minutes(1)))
     func failsViolations() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
-        var runResult = makeRunResult(request: request)
+        var runResult = try makeRunResult(request: request)
         let envelope = try #require(runResult.cornerResults["slow"]?[.erc])
         var payload = envelope.payload
         payload.violationCount = 1
-        runResult.cornerResults["slow"]?[.erc] = XcircuiteEngineResultEnvelope(
+        runResult.cornerResults["slow"]?[.erc] = ElectricalSignoffResult(
             schemaVersion: envelope.schemaVersion,
             runID: envelope.runID,
             status: envelope.status,
             diagnostics: envelope.diagnostics,
             artifacts: envelope.artifacts,
-            metadata: envelope.metadata,
+            metadata: envelope.provenance,
             payload: payload
         )
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
@@ -151,14 +151,14 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("release gate rejects stale qualification evidence", .timeLimit(.minutes(1)))
     func rejectsStaleQualification() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         var policy = makePolicy()
         policy.maximumQualificationAgeSeconds = 1
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: makeQualificationReport(runID: request.runID),
                 policy: policy,
@@ -172,42 +172,53 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("release gate requires integrity observations to cover run artifacts", .timeLimit(.minutes(1)))
     func requiresArtifactIntegrityCoverage() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         var policy = makePolicy()
         policy.requireArtifactIntegrityVerification = true
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: makeQualificationReport(runID: request.runID),
                 policy: policy,
-                artifactIntegrity: [XcircuiteFileReferenceIntegrity(
-                    status: .verified,
-                    path: "report.json",
-                    expectedSHA256: String(repeating: "b", count: 64),
-                    actualSHA256: String(repeating: "b", count: 64),
-                    expectedByteCount: 1,
-                    actualByteCount: 1,
-                    message: "fixture"
-                )],
+                artifactIntegrity: [ArtifactIntegrity(issues: [
+                    .digestMismatch(
+                        expected: try ContentDigest(
+                            algorithm: .sha256,
+                            hexadecimalValue: String(repeating: "b", count: 64)
+                        ),
+                        actual: try ContentDigest(
+                            algorithm: .sha256,
+                            hexadecimalValue: String(repeating: "c", count: 64)
+                        )
+                    )
+                ])],
                 evaluatedAt: Date(timeIntervalSince1970: 3)
             )
         )
 
         #expect(result.status == .blocked)
-        #expect(result.failureCodes.contains("artifact-integrity-reference-mismatch:report.json"))
+        #expect(result.failureCodes.contains("artifact-integrity-observation-failed"))
     }
 
     @Test("release gate rejects conflicting references for one artifact path", .timeLimit(.minutes(1)))
     func rejectsConflictingExpectedArtifactReferences() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
-        var runResult = makeRunResult(request: request)
+        var runResult = try makeRunResult(request: request)
         var fastERC = try #require(runResult.cornerResults["fast"]?[.erc])
-        var conflictingArtifact = try #require(fastERC.artifacts.first)
-        conflictingArtifact.sha256 = String(repeating: "c", count: 64)
+        let existingArtifact = try #require(fastERC.artifacts.first)
+        let conflictingArtifact = try makeArtifactReference(
+            artifactID: existingArtifact.artifactID,
+            path: existingArtifact.path,
+            role: existingArtifact.locator.role,
+            kind: existingArtifact.kind,
+            format: existingArtifact.format,
+            sha256: String(repeating: "c", count: 64),
+            byteCount: existingArtifact.byteCount
+        )
         fastERC.artifacts = [conflictingArtifact]
         runResult.cornerResults["fast"]?[.erc] = fastERC
         var policy = makePolicy()
@@ -229,14 +240,14 @@ struct ElectricalSignoffReleaseGateTests {
 
     @Test("release gate blocks qualification reports without exact corpus coverage", .timeLimit(.minutes(1)))
     func blocksIncompleteQualificationCoverage() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let specification = makeQualificationSpec(request: request)
         var report = makeQualificationReport(runID: request.runID)
         report.caseResults = []
         let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(
             ElectricalSignoffReleaseGateRequest(
                 runID: request.runID,
-                runResult: makeRunResult(request: request),
+                runResult: try makeRunResult(request: request),
                 qualificationSpec: specification,
                 qualificationReport: report,
                 policy: makePolicy(),
@@ -260,10 +271,11 @@ struct ElectricalSignoffReleaseGateTests {
         )
     }
 
-    private func makeRequest() -> ElectricalSignoffRequest {
-        let reference = XcircuiteFileReference(
+    private func makeRequest() throws -> ElectricalSignoffRequest {
+        let reference = try makeArtifactReference(
             artifactID: "fixture-input",
             path: "fixture.json",
+            role: .input,
             kind: .other,
             format: .json,
             sha256: String(repeating: "a", count: 64)
@@ -271,7 +283,7 @@ struct ElectricalSignoffReleaseGateTests {
         return ElectricalSignoffRequest(
             runID: "release-run",
             inputs: [reference],
-            design: LogicDesignReference(artifact: reference, topDesignName: "top", designDigest: "design"),
+            design: LogicDesignReference(artifact: reference.locator, topDesignName: "top", designDigest: "design"),
             physicalDesign: PhysicalDesignReference(layoutArtifact: reference, topCell: "top", layoutDigest: "layout"),
             pdk: PDKReference(manifest: reference, processID: "fixture", version: "1", digest: "pdk-digest"),
             configuration: ElectricalSignoffConfiguration(
@@ -284,22 +296,25 @@ struct ElectricalSignoffReleaseGateTests {
         )
     }
 
-    private func makeRunResult(request: ElectricalSignoffRequest) -> ElectricalSignoffRunResult {
-        let metadata = XcircuiteEngineExecutionMetadata(
-            engineID: "native",
-            implementationID: "native-electrical-signoff",
-            implementationVersion: "1",
+    private func makeRunResult(request: ElectricalSignoffRequest) throws -> ElectricalSignoffRunResult {
+        let metadata = try ExecutionProvenance(
+            producer: try ProducerIdentity(
+                kind: .engine,
+                identifier: "native-electrical-signoff",
+                version: "1"
+            ),
             startedAt: Date(timeIntervalSince1970: 1),
             completedAt: Date(timeIntervalSince1970: 2)
         )
-        let artifact = XcircuiteFileReference(
+        let artifact = try makeArtifactReference(
             artifactID: "electrical-report",
             path: "report.json",
+            role: .output,
             kind: .report,
             format: .json,
             sha256: String(repeating: "b", count: 64)
         )
-        var corners: [String: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]] = [:]
+        var corners: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]] = [:]
         for corner in request.configuration.operatingConditions {
             for axis in request.configuration.requiredAxes {
                 let payload = ElectricalSignoffPayload(
@@ -315,7 +330,7 @@ struct ElectricalSignoffReleaseGateTests {
                     ),
                     cornerID: corner.id
                 )
-                corners[corner.id, default: [:]][axis] = XcircuiteEngineResultEnvelope(
+                corners[corner.id, default: [:]][axis] = ElectricalSignoffResult(
                     schemaVersion: 1,
                     runID: request.runID,
                     status: .completed,
@@ -331,6 +346,28 @@ struct ElectricalSignoffReleaseGateTests {
             status: .completed,
             axisResults: aggregate,
             cornerResults: corners
+        )
+    }
+
+    private func makeArtifactReference(
+        artifactID: String,
+        path: String,
+        role: ArtifactRole,
+        kind: ArtifactKind,
+        format: ArtifactFormat,
+        sha256: String,
+        byteCount: UInt64 = 1
+    ) throws -> ArtifactReference {
+        ArtifactReference(
+            id: try ArtifactID(rawValue: artifactID),
+            locator: ArtifactLocator(
+                location: try ArtifactLocation(workspaceRelativePath: path),
+                role: role,
+                kind: kind,
+                format: format
+            ),
+            digest: try ContentDigest(algorithm: .sha256, hexadecimalValue: sha256),
+            byteCount: byteCount
         )
     }
 

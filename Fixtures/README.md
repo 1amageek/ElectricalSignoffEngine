@@ -13,6 +13,6 @@ The fixture corpus is a process-independent contract corpus. It exercises the na
 | `electrical-signoff-oracle-observations-v1.json` | oracle input | immutable case-keyed independent observation set |
 | `electrical-signoff-release-policy-v1.json` | release-gate input | explicit axis/corner coverage, qualification, artifact-integrity and freshness policy |
 
-The request must provide verified `XcircuiteFileReference` values for the design, layout, PDK, parasitic, topology-profile and process-rule artifacts. The topology and process-rule digest fields must match those request references and the declared PDK corner scope.
+The request must provide verified Foundation `ArtifactReference` values for the design, layout, PDK, parasitic, topology-profile and process-rule artifacts. The topology and process-rule digest fields must match those request references and the declared PDK corner scope.
 
 `electrical-signoff-runnable-spec-v1.json` can be executed directly from this package and returns a passing corpus report. The generic qualification and release-policy fixtures remain contract fixtures with placeholder digests; replace the placeholder references and supply a real retained run result before using them for a release decision.

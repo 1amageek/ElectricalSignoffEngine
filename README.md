@@ -4,7 +4,7 @@ Power-integrity and electrical-reliability analysis over shared extracted topolo
 
 ## Status
 
-This repository contains a native, process-independent electrical signoff implementation over verified JSON source artifacts or a canonical extracted-topology artifact. It provides typed axis APIs, deterministic topology/report encoding, immutable report references, structured blocked diagnostics, a standalone CLI and an Xcircuite flow adapter. It does not claim foundry qualification without a process-specific rule set and external oracle.
+This repository contains a native, process-independent electrical signoff implementation over verified JSON source artifacts or a canonical extracted-topology artifact. It provides typed axis APIs, deterministic topology/report encoding, immutable report references, structured blocked diagnostics and a standalone CLI. It does not claim foundry qualification without a process-specific rule set and external oracle.
 
 ## Products
 
@@ -34,27 +34,24 @@ The native products are:
 
 Each request carries one or more explicit `ElectricalOperatingCondition` values with PDK corner, temperature, supply-voltage scale and activity scale. `cornerResults` retains every per-corner envelope, while `axisResults` deterministically selects the most severe envelope for gate evaluation. Canonical extraction requires a verified PDK-scoped `ElectricalProcessRuleSet`; this is process provenance, not foundry qualification.
 
-Every product implements its existing protocol and returns the same `XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>`. Design findings complete with violations; missing or unverifiable semantics are blocked.
+Every product implements its domain protocol and returns `ElectricalSignoffResult`. Design findings complete with violations; missing or unverifiable semantics are blocked. Cross-engine artifacts, diagnostics and execution provenance use CircuiteFoundation directly.
 
 ## CircuiteFoundation boundary
 
 The public `ElectricalSignoffExecuting` contract refines
 `CircuiteFoundation.Engine<ElectricalSignoffRequest, ElectricalSignoffRunResult>`.
-ElectricalSignoffEngine keeps its domain request, result envelope and Xcircuite
-run lifecycle, while `ElectricalSignoffFoundationArtifactBridge` is the only
-boundary used to promote legacy file references into Foundation locators and
-verified references. It delegates path containment, regular-file checks,
-SHA-256 capture and byte-count capture to CircuiteFoundation; it never invents
-integrity metadata for a reference that has not been materialized.
+ElectricalSignoffEngine keeps its domain request and result while DesignFlowKernel
+owns run lifecycle. The engine consumes and returns Foundation artifact
+references directly; path containment, regular-file checks, SHA-256 capture and
+byte-count capture are provided by CircuiteFoundation.
 
 `ElectricalSignoffFoundationEvidence` is the canonical cross-engine evidence
 view for Agent and human review. It contains `ExecutionProvenance`, input and
 output artifact references, and typed `DesignDiagnostic` values, but does not
-introduce a signoff verdict into Foundation. Xcircuite uses
-`LocalElectricalArtifactStore` for production flow execution, then persists
-both the domain run result and `foundation-evidence.json` under the run
-directory. The in-memory artifact store remains available for isolated engine
-tests and explicit non-persistent callers.
+introduce a signoff verdict into Foundation. Xcircuite may persist both the
+domain run result and `foundation-evidence.json` under its run directory. The
+in-memory artifact store remains available for isolated engine tests and
+explicit non-persistent callers.
 
 `ElectricalSignoffEngineAPI.capabilitySnapshot` exposes the supported axes, topology format, external adapter boundary and qualification status to developer and agent tooling. External process-specific implementations can be injected through `ExternalElectricalSignoffRunning` without changing the native result contract.
 
@@ -106,17 +103,19 @@ For standard mask inputs, Xcircuite provides `ElectricalStandardLayoutImportFlow
 
 Every executing product uses:
 
-- a `Codable`, `Hashable`, `Sendable` request conforming to `XcircuiteEngineRequest`;
-- `XcircuiteEngineResultEnvelope<Payload>` for status, diagnostics, artifacts and execution metadata;
+- a `Codable`, `Hashable`, `Sendable` domain request;
+- `ElectricalSignoffResult` for status, diagnostics, artifacts and execution provenance;
 - protocol-first dependency injection;
-- immutable `XcircuiteFileReference` inputs and outputs;
+- immutable Foundation `ArtifactReference` inputs and outputs;
 - explicit blocked, failed and cancelled states.
 
 ## Xcircuite integration
 
 Xcircuite binds one design, layout, PDK, power-intent and parasitic digest set across every electrical axis so results cannot refer to different revisions. `ElectricalStandardLayoutImportFlowStageExecutor` is the standard-format bridge and persists an `ElectricalSignoffInputArtifactManifest` for the consumed layout, technology and connectivity files; `ElectricalSignoffFlowStageExecutor` persists both the canonical `ElectricalSignoffRunResult` and its Foundation `ElectricalSignoffFoundationEvidence`, while `ElectricalSignoffQualificationFlowStageExecutor` persists the corpus spec, input manifest, qualification report, `ToolEvidence`, `RetainedCorpusSuite`/`RetainedCorpusReport` and a release-consumable evidence set. `ElectricalSignoffReleaseGateFlowStageExecutor` accepts only digest-bound input references or verified stage-artifact selectors, consumes those immutable references and can require a separate process-qualification evidence artifact before persisting the typed release decision plus an `ElectricalSignoffReleaseArtifactBundle`. The bundle is a digest-bound review/resume surface for the request, policy, qualification, topology/provenance, per-corner evidence, repair plan, run plan/action ledger, run manifest and approval records. DesignFlowKernel owns approval, resume, retry and cancellation; failed signoff payloads are retained as `ElectricalSignoffRepairPlan` artifacts for a subsequent immutable design revision.
 
-The library does not depend on the Xcircuite runtime. Xcircuite owns the adapter to `DesignFlowKernel.FlowStageExecutor`, artifact persistence, qualification gates, repair loops and human approval.
+The library does not depend on the Xcircuite runtime. Xcircuite invokes the
+public protocols directly and owns concrete artifact persistence; DesignFlowKernel
+owns approval, resume, retry and cancellation.
 
 ## Build
 
@@ -134,7 +133,9 @@ swift test --filter ElectricalSignoffEngineTests
 
 This Swift package does not define an Xcode test scheme; use the timeout-bounded Swift Package runner for local contract and qualification tests.
 
-The package also exposes `Xcircuite/Sources/Xcircuite/ElectricalSignoffFlowStageExecutor.swift`, which maps the per-axis envelopes into `FlowStageResult` gates while leaving approval, resume and release policy to Xcircuite and DesignFlowKernel.
+The package does not provide an Xcircuite adapter. A host may compose the
+per-axis results with DesignFlowKernel while preserving the domain result and
+Foundation artifact contracts.
 
 ## Verification snapshot
 

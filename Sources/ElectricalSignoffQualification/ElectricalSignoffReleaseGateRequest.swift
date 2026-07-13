@@ -1,7 +1,7 @@
 import Foundation
 import ElectricalSignoffEngine
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffReleaseGateRequest: Sendable, Hashable, Codable {
     public static let currentSchemaVersion = 1
@@ -13,7 +13,7 @@ public struct ElectricalSignoffReleaseGateRequest: Sendable, Hashable, Codable {
     public var qualificationReport: ElectricalSignoffQualificationReport
     public var processQualificationEvidence: ToolProcessQualificationEvidence?
     public var policy: ElectricalSignoffReleaseGatePolicy
-    public var artifactIntegrity: [XcircuiteFileReferenceIntegrity]
+    public var artifactIntegrity: [ArtifactIntegrity]
     public var evaluatedAt: Date
 
     public init(
@@ -23,7 +23,7 @@ public struct ElectricalSignoffReleaseGateRequest: Sendable, Hashable, Codable {
         qualificationReport: ElectricalSignoffQualificationReport,
         processQualificationEvidence: ToolProcessQualificationEvidence? = nil,
         policy: ElectricalSignoffReleaseGatePolicy,
-        artifactIntegrity: [XcircuiteFileReferenceIntegrity] = [],
+        artifactIntegrity: [ArtifactIntegrity] = [],
         evaluatedAt: Date = Date(),
         schemaVersion: Int = Self.currentSchemaVersion
     ) {

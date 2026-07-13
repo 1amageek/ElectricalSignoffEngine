@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
@@ -7,9 +7,9 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
 
     public var schemaVersion: Int
     public var runID: String
-    public var status: XcircuiteEngineExecutionStatus
-    public var axisResults: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]
-    public var cornerResults: [String: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]]
+    public var status: ElectricalSignoffExecutionStatus
+    public var axisResults: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]
+    public var cornerResults: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]]
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
@@ -22,9 +22,9 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
     public init(
         schemaVersion: Int = Self.currentSchemaVersion,
         runID: String,
-        status: XcircuiteEngineExecutionStatus,
-        axisResults: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>],
-        cornerResults: [String: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]] = [:]
+        status: ElectricalSignoffExecutionStatus,
+        axisResults: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult],
+        cornerResults: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]] = [:]
     ) {
         self.schemaVersion = schemaVersion
         self.runID = runID
@@ -37,10 +37,10 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         runID = try container.decode(String.self, forKey: .runID)
-        status = try container.decode(XcircuiteEngineExecutionStatus.self, forKey: .status)
-        axisResults = try container.decode([ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>].self, forKey: .axisResults)
+        status = try container.decode(ElectricalSignoffExecutionStatus.self, forKey: .status)
+        axisResults = try container.decode([ElectricalSignoffAnalysisAxis: ElectricalSignoffResult].self, forKey: .axisResults)
         cornerResults = try container.decodeIfPresent(
-            [String: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]].self,
+            [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]].self,
             forKey: .cornerResults
         ) ?? [:]
     }
@@ -68,7 +68,7 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
     }
 
     private func validate(
-        _ envelope: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>,
+        _ envelope: ElectricalSignoffResult,
         axis: ElectricalSignoffAnalysisAxis,
         cornerID: String?
     ) throws {
@@ -80,7 +80,7 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
               envelope.payload.violationCount >= 0,
               envelope.artifacts.allSatisfy({
                   !$0.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                      && ($0.byteCount == nil || $0.byteCount! >= 0)
+                      && $0.byteCount >= 0
               }) else {
             throw ElectricalSignoffError.invalidExecutionResult(
                 "envelope identity or payload contract does not match the run result"

@@ -1,13 +1,13 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffProcessQualificationArtifactIntegrityIssue: Sendable, Hashable, Codable {
     public var category: String
-    public var integrity: XcircuiteFileReferenceIntegrity
+    public var integrity: ArtifactIntegrity
 
     public init(
         category: String,
-        integrity: XcircuiteFileReferenceIntegrity
+        integrity: ArtifactIntegrity
     ) {
         self.category = category
         self.integrity = integrity

@@ -1,6 +1,6 @@
 import CircuiteFoundation
+import CryptoKit
 import Foundation
-import XcircuitePackage
 
 public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
     public let projectRoot: URL
@@ -16,13 +16,13 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
         artifactID: String,
         runID: String,
         axis: ElectricalSignoffAnalysisAxis
-    ) async throws -> XcircuiteFileReference {
+    ) async throws -> ArtifactReference {
         let relativeDirectory = "\(outputDirectory)/\(runID)/electrical-signoff"
         let relativePath = "\(relativeDirectory)/\(safeFileName(artifactID)).json"
-        let directoryURL = try XcircuitePackage(projectRoot: projectRoot)
-            .url(forProjectRelativePath: relativeDirectory)
-        let fileURL = try XcircuitePackage(projectRoot: projectRoot)
-            .url(forProjectRelativePath: relativePath)
+        let directoryLocation = try ArtifactLocation(workspaceRelativePath: relativeDirectory)
+        let fileLocation = try ArtifactLocation(workspaceRelativePath: relativePath)
+        let directoryURL = try directoryLocation.resolvedFileURL(relativeTo: projectRoot)
+        let fileURL = try fileLocation.resolvedFileURL(relativeTo: projectRoot)
         do {
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
             try data.write(to: fileURL, options: [.atomic])
@@ -33,6 +33,7 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
             let location = try ArtifactLocation(workspaceRelativePath: relativePath)
             let locator = ArtifactLocator(
                 location: location,
+                role: .output,
                 kind: .report,
                 format: .json
             )
@@ -41,16 +42,7 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
                 relativeTo: projectRoot,
                 producer: nil
             )
-            return XcircuiteFileReference(
-                artifactID: artifactID,
-                path: relativePath,
-                kind: .report,
-                format: .json,
-                sha256: foundationReference.digest.hexadecimalValue,
-                byteCount: Int64(foundationReference.byteCount),
-                producedByRunID: runID,
-                verifiedByRunID: runID
-            )
+            return foundationReference
         } catch {
             throw ElectricalSignoffError.artifactPersistence(
                 "artifact integrity capture failed: \(error.localizedDescription)"
@@ -73,6 +65,6 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
     }
 
     private func identifierDigest(_ value: String) -> String {
-        String(XcircuiteHasher().sha256(data: Data(value.utf8)).prefix(12))
+        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined().prefix(12).description
     }
 }

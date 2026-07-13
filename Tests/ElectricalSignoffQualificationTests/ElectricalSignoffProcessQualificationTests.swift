@@ -8,18 +8,18 @@ import PDKCore
 import PhysicalDesignCore
 import Testing
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 @Suite("Electrical signoff process qualification")
 struct ElectricalSignoffProcessQualificationTests {
     @Test("process qualification promotes only complete PDK-scoped evidence", .timeLimit(.minutes(1)))
     func promotesCompleteEvidence() throws {
-        let request = makeRequest()
+        let request = try makeRequest()
         let now = Date(timeIntervalSince1970: 1_000)
-        let processRequest = makeProcessQualificationRequest(
+        let processRequest = try makeProcessQualificationRequest(
             request: request,
             evaluatedAt: now,
-            approvalArtifacts: [artifact(id: "human-approval", character: "e")]
+            approvalArtifacts: [try artifact(id: "human-approval", character: "e")]
         )
 
         let result = try DefaultElectricalSignoffProcessQualificationEvaluator().evaluate(processRequest)
@@ -33,19 +33,12 @@ struct ElectricalSignoffProcessQualificationTests {
 
     @Test("process qualification blocks when human approval or artifact identity is missing", .timeLimit(.minutes(1)))
     func blocksIncompleteEvidence() throws {
-        let request = makeRequest()
-        let processRequest = makeProcessQualificationRequest(
+        let request = try makeRequest()
+        let processRequest = try makeProcessQualificationRequest(
             request: request,
             evaluatedAt: Date(timeIntervalSince1970: 1_000),
             approvalArtifacts: [],
-            healthArtifacts: [XcircuiteFileReference(
-                artifactID: "tampered-health",
-                path: "qualification/health.json",
-                kind: .report,
-                format: .json,
-                sha256: "invalid",
-                byteCount: 1
-            )]
+            healthArtifacts: [try artifact(id: "tampered-health", character: "d")]
         )
 
         let result = try DefaultElectricalSignoffProcessQualificationEvaluator().evaluate(processRequest)
@@ -62,9 +55,9 @@ struct ElectricalSignoffProcessQualificationTests {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let processRequest = try materializeArtifactReferences(
             makeProcessQualificationRequest(
-                request: makeRequest(),
+                request: try makeRequest(),
                 evaluatedAt: Date(timeIntervalSince1970: 1_000),
-                approvalArtifacts: [artifact(id: "human-approval", character: "e")]
+                approvalArtifacts: [try artifact(id: "human-approval", character: "e")]
             ),
             root: root
         )
@@ -97,9 +90,9 @@ struct ElectricalSignoffProcessQualificationTests {
     private func makeProcessQualificationRequest(
         request: ElectricalSignoffRequest,
         evaluatedAt: Date,
-        approvalArtifacts: [XcircuiteFileReference],
-        healthArtifacts: [XcircuiteFileReference]? = nil
-    ) -> ElectricalSignoffProcessQualificationRequest {
+        approvalArtifacts: [ArtifactReference],
+        healthArtifacts: [ArtifactReference]? = nil
+    ) throws -> ElectricalSignoffProcessQualificationRequest {
         let caseID = "clean-erc"
         let condition = request.configuration.operatingCondition
         let specification = ElectricalSignoffQualificationSpec(
@@ -159,9 +152,14 @@ struct ElectricalSignoffProcessQualificationTests {
             pdkID: request.pdk.processID,
             pdkDigest: request.pdk.digest
         )
-        let corpusArtifact = artifact(id: "corpus-report", character: "a")
-        let oracleArtifact = artifact(id: "oracle-observation", character: "b")
-        let resolvedHealthArtifacts = healthArtifacts ?? [artifact(id: "health-check", character: "c")]
+        let corpusArtifact = try artifact(id: "corpus-report", character: "a")
+        let oracleArtifact = try artifact(id: "oracle-observation", character: "b")
+        let resolvedHealthArtifacts: [ArtifactReference]
+        if let healthArtifacts {
+            resolvedHealthArtifacts = healthArtifacts
+        } else {
+            resolvedHealthArtifacts = [try artifact(id: "health-check", character: "c")]
+        }
         let evidenceArtifacts = [corpusArtifact, oracleArtifact]
             + resolvedHealthArtifacts
             + approvalArtifacts
@@ -183,7 +181,7 @@ struct ElectricalSignoffProcessQualificationTests {
             )],
             healthEvidence: resolvedHealthArtifacts.map {
                 evidence(
-                    id: "health-evidence-\($0.artifactID ?? $0.path)",
+                    id: "health-evidence-\($0.artifactID)|\($0.path)",
                     kind: .healthCheck,
                     artifact: $0,
                     scope: scope
@@ -191,7 +189,7 @@ struct ElectricalSignoffProcessQualificationTests {
             },
             approvalEvidence: approvalArtifacts.map {
                 evidence(
-                    id: "approval-evidence-\($0.artifactID ?? $0.path)",
+                    id: "approval-evidence-\($0.artifactID)|\($0.path)",
                     kind: .productionApproval,
                     artifact: $0,
                     scope: scope
@@ -218,7 +216,7 @@ struct ElectricalSignoffProcessQualificationTests {
     private func evidence(
         id: String,
         kind: ToolEvidenceKind,
-        artifact: XcircuiteFileReference,
+        artifact: ArtifactReference,
         scope: ToolQualificationScope
     ) -> ToolEvidence {
         ToolEvidence(
@@ -236,25 +234,44 @@ struct ElectricalSignoffProcessQualificationTests {
         )
     }
 
-    private func makeRequest() -> ElectricalSignoffRequest {
-        let reference = XcircuiteFileReference(path: "fixture.json", kind: .other, format: .json)
+    private func makeRequest() throws -> ElectricalSignoffRequest {
+        let reference = try ArtifactReference(
+            id: ArtifactID(rawValue: "fixture"),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: "fixture.json"),
+                role: .input,
+                kind: .other,
+                format: .json
+            ),
+            digest: ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: String(repeating: "a", count: 64)
+            ),
+            byteCount: 1
+        )
         return ElectricalSignoffRequest(
             runID: "qualification-run",
             inputs: [reference],
-            design: LogicDesignReference(artifact: reference, topDesignName: "top", designDigest: "design"),
+            design: LogicDesignReference(artifact: reference.locator, topDesignName: "top", designDigest: "design"),
             physicalDesign: PhysicalDesignReference(layoutArtifact: reference, topCell: "top", layoutDigest: "layout"),
             pdk: PDKReference(manifest: reference, processID: "fixture", version: "1", digest: "pdk-digest"),
             configuration: ElectricalSignoffConfiguration(requiredAxes: [.erc])
         )
     }
 
-    private func artifact(id: String, character: Character) -> XcircuiteFileReference {
-        XcircuiteFileReference(
-            artifactID: id,
-            path: "qualification/\(id).json",
-            kind: .report,
-            format: .json,
-            sha256: String(repeating: character, count: 64),
+    private func artifact(id: String, character: Character) throws -> ArtifactReference {
+        try ArtifactReference(
+            id: ArtifactID(rawValue: id),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: "qualification/\(id).json"),
+                role: .output,
+                kind: .report,
+                format: .json
+            ),
+            digest: ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: String(repeating: character, count: 64)
+            ),
             byteCount: 1
         )
     }
@@ -263,33 +280,27 @@ struct ElectricalSignoffProcessQualificationTests {
         _ request: ElectricalSignoffProcessQualificationRequest,
         root: URL
     ) throws -> ElectricalSignoffProcessQualificationRequest {
-        let store = XcircuitePackageStore()
         var materialized = request
         var processEvidence = request.processEvidence
         processEvidence.corpusEvidence = try materializeEvidence(
             processEvidence.corpusEvidence,
-            root: root,
-            store: store
+            root: root
         )
         processEvidence.oracleEvidence = try materializeEvidence(
             processEvidence.oracleEvidence,
-            root: root,
-            store: store
+            root: root
         )
         processEvidence.healthEvidence = try materializeEvidence(
             processEvidence.healthEvidence,
-            root: root,
-            store: store
+            root: root
         )
         processEvidence.approvalEvidence = try materializeEvidence(
             processEvidence.approvalEvidence,
-            root: root,
-            store: store
+            root: root
         )
         processEvidence.evidenceArtifacts = try materialize(
             processEvidence.evidenceArtifacts,
-            root: root,
-            store: store
+            root: root
         )
         processEvidence.corpusEvidence = rebindEvidence(
             processEvidence.corpusEvidence,
@@ -313,17 +324,17 @@ struct ElectricalSignoffProcessQualificationTests {
 
     private func rebindEvidence(
         _ evidence: [ToolEvidence],
-        artifacts: [XcircuiteFileReference]
+        artifacts: [ArtifactReference]
     ) -> [ToolEvidence] {
         let artifactsByKey = Dictionary(
             uniqueKeysWithValues: artifacts.map {
-                ("\($0.artifactID ?? "")|\($0.path)", $0)
+                ("\($0.artifactID)|\($0.path)", $0)
             }
         )
         return evidence.map { item in
             var rebound = item
             if let artifact = item.artifact {
-                let key = "\(artifact.artifactID ?? "")|\(artifact.path)"
+                let key = "\(artifact.artifactID)|\(artifact.path)"
                 rebound.artifact = artifactsByKey[key]
             }
             return rebound
@@ -332,16 +343,14 @@ struct ElectricalSignoffProcessQualificationTests {
 
     private func materializeEvidence(
         _ evidence: [ToolEvidence],
-        root: URL,
-        store: XcircuitePackageStore
+        root: URL
     ) throws -> [ToolEvidence] {
         try evidence.map { item in
             var materialized = item
             if let artifact = item.artifact {
                 materialized.artifact = try materialize(
                     [artifact],
-                    root: root,
-                    store: store
+                    root: root
                 )[0]
             }
             return materialized
@@ -349,10 +358,9 @@ struct ElectricalSignoffProcessQualificationTests {
     }
 
     private func materialize(
-        _ references: [XcircuiteFileReference],
-        root: URL,
-        store: XcircuitePackageStore
-    ) throws -> [XcircuiteFileReference] {
+        _ references: [ArtifactReference],
+        root: URL
+    ) throws -> [ArtifactReference] {
         try references.map { reference in
             let url = root.appending(path: reference.path)
             try FileManager.default.createDirectory(
@@ -361,7 +369,7 @@ struct ElectricalSignoffProcessQualificationTests {
             )
             let data: Data
             if reference.artifactID == "human-approval" {
-                data = try JSONEncoder().encode(XcircuiteApprovalRecord(
+                data = try JSONEncoder().encode(ElectricalApprovalRecord(
                     runID: "qualification-run",
                     stageID: ElectricalSignoffProcessQualificationRequest.requiredApprovalStageID,
                     verdict: .approved,
@@ -373,12 +381,15 @@ struct ElectricalSignoffProcessQualificationTests {
                 data = Data("retained-artifact".utf8)
             }
             try data.write(to: url)
-            return try store.fileReference(
-                forProjectRelativePath: reference.path,
-                artifactID: reference.artifactID,
-                kind: reference.kind,
-                format: reference.format,
-                inProjectAt: root
+            return try ArtifactReference(
+                id: reference.id,
+                locator: reference.locator,
+                digest: SHA256ContentDigester().digest(
+                    data: data,
+                    using: reference.digest.algorithm
+                ),
+                byteCount: UInt64(data.count),
+                producer: reference.producer
             )
         }
     }

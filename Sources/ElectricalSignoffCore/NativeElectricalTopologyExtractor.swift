@@ -286,6 +286,14 @@ public struct NativeElectricalTopologyExtractor: ElectricalTopologyExtracting {
         }
         let sourceResult = try makeSources(profile: profile, nodes: nodeBuilder.nodes)
         let domains = try makeDomains(profile: profile, powerIntent: sources.powerIntent)
+        let powerIntentDigest: String?
+        if let powerIntent = sources.request.powerIntent {
+            powerIntentDigest = try sources.request
+                .materializedArtifact(for: powerIntent.artifact, role: "power-intent")
+                .sha256
+        } else {
+            powerIntentDigest = nil
+        }
         let nets = netIDs.sorted().map { netID in
             let rule = profileNetRules[netID]
             let domainID = rule?.domainID ?? powerIntentDomains[netID]
@@ -318,7 +326,7 @@ public struct NativeElectricalTopologyExtractor: ElectricalTopologyExtracting {
             substrateContacts: profile.substrateContacts,
             agingModels: profile.agingModels,
             rules: defaultRules,
-            powerIntentDigest: sources.request.powerIntent?.artifact.sha256,
+            powerIntentDigest: powerIntentDigest,
             rulesByCorner: rulesByCorner
         )
         try ElectricalTopologyValidator().validate(topology)

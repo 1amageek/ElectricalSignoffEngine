@@ -1,5 +1,6 @@
 import Foundation
-import XcircuitePackage
+import CryptoKit
+import CircuiteFoundation
 
 public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codable {
     public static let currentSchemaVersion = 1
@@ -7,20 +8,20 @@ public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codabl
     public var schemaVersion: Int
     public var runID: String
     public var createdAt: Date
-    public var gateResult: XcircuiteFileReference
-    public var request: XcircuiteFileReference
-    public var runResult: XcircuiteFileReference
-    public var qualificationSpec: XcircuiteFileReference
-    public var qualificationReport: XcircuiteFileReference
-    public var qualificationArtifacts: [XcircuiteFileReference]
-    public var policy: XcircuiteFileReference
-    public var sourceArtifacts: [XcircuiteFileReference]
-    public var cornerAxisEvidence: [XcircuiteFileReference]
-    public var repairPlan: XcircuiteFileReference?
-    public var approvalArtifacts: [XcircuiteFileReference]
-    public var plan: XcircuiteFileReference?
-    public var actionLog: XcircuiteFileReference?
-    public var runManifest: XcircuiteFileReference?
+    public var gateResult: ArtifactReference
+    public var request: ArtifactReference
+    public var runResult: ArtifactReference
+    public var qualificationSpec: ArtifactReference
+    public var qualificationReport: ArtifactReference
+    public var qualificationArtifacts: [ArtifactReference]
+    public var policy: ArtifactReference
+    public var sourceArtifacts: [ArtifactReference]
+    public var cornerAxisEvidence: [ArtifactReference]
+    public var repairPlan: ArtifactReference?
+    public var approvalArtifacts: [ArtifactReference]
+    public var plan: ArtifactReference?
+    public var actionLog: ArtifactReference?
+    public var runManifest: ArtifactReference?
     public var bundleDigest: String
 
     private enum CodingKeys: String, CodingKey {
@@ -47,20 +48,20 @@ public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codabl
     public init(
         runID: String,
         createdAt: Date,
-        gateResult: XcircuiteFileReference,
-        request: XcircuiteFileReference,
-        runResult: XcircuiteFileReference,
-        qualificationSpec: XcircuiteFileReference,
-        qualificationReport: XcircuiteFileReference,
-        qualificationArtifacts: [XcircuiteFileReference] = [],
-        policy: XcircuiteFileReference,
-        sourceArtifacts: [XcircuiteFileReference] = [],
-        cornerAxisEvidence: [XcircuiteFileReference] = [],
-        repairPlan: XcircuiteFileReference? = nil,
-        approvalArtifacts: [XcircuiteFileReference] = [],
-        plan: XcircuiteFileReference? = nil,
-        actionLog: XcircuiteFileReference? = nil,
-        runManifest: XcircuiteFileReference? = nil,
+        gateResult: ArtifactReference,
+        request: ArtifactReference,
+        runResult: ArtifactReference,
+        qualificationSpec: ArtifactReference,
+        qualificationReport: ArtifactReference,
+        qualificationArtifacts: [ArtifactReference] = [],
+        policy: ArtifactReference,
+        sourceArtifacts: [ArtifactReference] = [],
+        cornerAxisEvidence: [ArtifactReference] = [],
+        repairPlan: ArtifactReference? = nil,
+        approvalArtifacts: [ArtifactReference] = [],
+        plan: ArtifactReference? = nil,
+        actionLog: ArtifactReference? = nil,
+        runManifest: ArtifactReference? = nil,
         bundleDigest: String? = nil,
         schemaVersion: Int = Self.currentSchemaVersion
     ) throws {
@@ -112,26 +113,26 @@ public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codabl
         try self.init(
             runID: try container.decode(String.self, forKey: .runID),
             createdAt: try container.decode(Date.self, forKey: .createdAt),
-            gateResult: try container.decode(XcircuiteFileReference.self, forKey: .gateResult),
-            request: try container.decode(XcircuiteFileReference.self, forKey: .request),
-            runResult: try container.decode(XcircuiteFileReference.self, forKey: .runResult),
-            qualificationSpec: try container.decode(XcircuiteFileReference.self, forKey: .qualificationSpec),
-            qualificationReport: try container.decode(XcircuiteFileReference.self, forKey: .qualificationReport),
-            qualificationArtifacts: try container.decode([XcircuiteFileReference].self, forKey: .qualificationArtifacts),
-            policy: try container.decode(XcircuiteFileReference.self, forKey: .policy),
-            sourceArtifacts: try container.decode([XcircuiteFileReference].self, forKey: .sourceArtifacts),
-            cornerAxisEvidence: try container.decode([XcircuiteFileReference].self, forKey: .cornerAxisEvidence),
-            repairPlan: try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .repairPlan),
-            approvalArtifacts: try container.decode([XcircuiteFileReference].self, forKey: .approvalArtifacts),
-            plan: try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .plan),
-            actionLog: try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .actionLog),
-            runManifest: try container.decodeIfPresent(XcircuiteFileReference.self, forKey: .runManifest),
+            gateResult: try container.decode(ArtifactReference.self, forKey: .gateResult),
+            request: try container.decode(ArtifactReference.self, forKey: .request),
+            runResult: try container.decode(ArtifactReference.self, forKey: .runResult),
+            qualificationSpec: try container.decode(ArtifactReference.self, forKey: .qualificationSpec),
+            qualificationReport: try container.decode(ArtifactReference.self, forKey: .qualificationReport),
+            qualificationArtifacts: try container.decode([ArtifactReference].self, forKey: .qualificationArtifacts),
+            policy: try container.decode(ArtifactReference.self, forKey: .policy),
+            sourceArtifacts: try container.decode([ArtifactReference].self, forKey: .sourceArtifacts),
+            cornerAxisEvidence: try container.decode([ArtifactReference].self, forKey: .cornerAxisEvidence),
+            repairPlan: try container.decodeIfPresent(ArtifactReference.self, forKey: .repairPlan),
+            approvalArtifacts: try container.decode([ArtifactReference].self, forKey: .approvalArtifacts),
+            plan: try container.decodeIfPresent(ArtifactReference.self, forKey: .plan),
+            actionLog: try container.decodeIfPresent(ArtifactReference.self, forKey: .actionLog),
+            runManifest: try container.decodeIfPresent(ArtifactReference.self, forKey: .runManifest),
             bundleDigest: try container.decode(String.self, forKey: .bundleDigest),
             schemaVersion: try container.decode(Int.self, forKey: .schemaVersion)
         )
     }
 
-    public var allReferences: [XcircuiteFileReference] {
+    public var allReferences: [ArtifactReference] {
         Self.references(
             gateResult: gateResult,
             request: request,
@@ -157,7 +158,7 @@ public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codabl
         guard !runID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffReleaseArtifactBundleError.invalidRunID
         }
-        let required: [(String, XcircuiteFileReference)] = [
+        let required: [(String, ArtifactReference)] = [
             ("gate-result", gateResult),
             ("request", request),
             ("run-result", runResult),
@@ -196,47 +197,42 @@ public struct ElectricalSignoffReleaseArtifactBundle: Sendable, Hashable, Codabl
         }
     }
 
-    public static func digest(runID: String, references: [XcircuiteFileReference]) -> String {
+    public static func digest(runID: String, references: [ArtifactReference]) -> String {
         let canonical = (["runID=\(runID)"] + references.sorted { $0.path < $1.path }.map { reference in
             [
-                reference.artifactID ?? "",
+                reference.artifactID,
                 reference.path,
                 reference.kind.rawValue,
                 reference.format.rawValue,
-                reference.sha256 ?? "",
-                reference.byteCount.map(String.init) ?? "",
-                reference.producedByRunID ?? "",
-                reference.verifiedByRunID ?? "",
+                reference.sha256,
+                String(reference.byteCount),
             ].joined(separator: "|")
         }).joined(separator: "\n")
-        return XcircuiteHasher().sha256(data: Data(canonical.utf8))
+        return SHA256.hash(data: Data(canonical.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    private func validate(_ reference: XcircuiteFileReference, role: String) throws {
+    private func validate(_ reference: ArtifactReference, role: String) throws {
         guard !reference.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffReleaseArtifactBundleError.missingReference(role: role)
-        }
-        guard reference.sha256 != nil, reference.byteCount != nil else {
-            throw ElectricalSignoffReleaseArtifactBundleError.missingIntegrity(path: reference.path)
         }
     }
 
     private static func references(
-        gateResult: XcircuiteFileReference,
-        request: XcircuiteFileReference,
-        runResult: XcircuiteFileReference,
-        qualificationSpec: XcircuiteFileReference,
-        qualificationReport: XcircuiteFileReference,
-        qualificationArtifacts: [XcircuiteFileReference],
-        policy: XcircuiteFileReference,
-        sourceArtifacts: [XcircuiteFileReference],
-        cornerAxisEvidence: [XcircuiteFileReference],
-        repairPlan: XcircuiteFileReference?,
-        approvalArtifacts: [XcircuiteFileReference],
-        plan: XcircuiteFileReference?,
-        actionLog: XcircuiteFileReference?,
-        runManifest: XcircuiteFileReference?
-    ) -> [XcircuiteFileReference] {
+        gateResult: ArtifactReference,
+        request: ArtifactReference,
+        runResult: ArtifactReference,
+        qualificationSpec: ArtifactReference,
+        qualificationReport: ArtifactReference,
+        qualificationArtifacts: [ArtifactReference],
+        policy: ArtifactReference,
+        sourceArtifacts: [ArtifactReference],
+        cornerAxisEvidence: [ArtifactReference],
+        repairPlan: ArtifactReference?,
+        approvalArtifacts: [ArtifactReference],
+        plan: ArtifactReference?,
+        actionLog: ArtifactReference?,
+        runManifest: ArtifactReference?
+    ) -> [ArtifactReference] {
         var references = [gateResult, request, runResult, qualificationSpec, qualificationReport]
         references.append(contentsOf: qualificationArtifacts)
         references.append(policy)

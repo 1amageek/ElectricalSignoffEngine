@@ -1,5 +1,5 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct ExternalERCEngine: ERCExecuting {
@@ -9,7 +9,7 @@ public struct ExternalERCEngine: ERCExecuting {
         self.runner = runner
     }
 
-    public func execute(_ request: ElectricalSignoffRequest) async throws -> XcircuiteEngineResultEnvelope<ElectricalSignoffPayload> {
+    public func execute(_ request: ElectricalSignoffRequest) async throws -> ElectricalSignoffResult {
         try await runner.execute(request, axis: .erc)
     }
 }

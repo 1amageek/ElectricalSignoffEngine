@@ -1,11 +1,11 @@
 import Foundation
-import XcircuitePackage
+import CircuiteFoundation
 
 public enum ElectricalSignoffError: Error, Sendable, Hashable, Codable, LocalizedError {
     case missingTopologyArtifact
     case unsupportedTopologyFormat(String)
     case unsupportedSourceFormat(source: String, format: String)
-    case artifactIntegrity(path: String, status: XcircuiteFileReferenceIntegrityStatus, message: String)
+    case artifactIntegrity(path: String, status: String, message: String)
     case malformedTopology(String)
     case schemaVersionUnsupported(Int)
     case digestMismatch(kind: String, expected: String, actual: String)

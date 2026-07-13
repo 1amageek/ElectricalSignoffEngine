@@ -71,7 +71,7 @@ Acceptance criteria:
 - Repair candidates become typed plans; applying a repair creates a new immutable design revision.
 - Agent and cockpit paths consume the same review bundle and diagnostics.
 
-Current implementation provides the axis adapter with canonical run-result and `ElectricalSignoffFoundationEvidence` persistence, Foundation-backed input/output artifact lineage, `ElectricalSignoffQualificationFlowStageExecutor` with spec/report/ToolEvidence/immutable oracle retention/retained release artifacts, DesignFlowKernel approval/resume participation, and `ElectricalSignoffRepairPlan` persistence for failed axes. `XcircuiteElectricalRepairRevisionRequest` and `ElectricalSignoffRepairRevisionFlowStageExecutor` verify plan provenance, apply the selected candidate through the native physical-design executor, persist a new digest-bound revision, and mark the required all-axis rerun explicitly.
+Current implementation provides direct protocol execution with canonical run-result and `ElectricalSignoffFoundationEvidence` persistence, Foundation-backed input/output artifact lineage, `ElectricalSignoffQualificationFlowStageExecutor` with spec/report/ToolEvidence/immutable oracle retention/retained release artifacts, DesignFlowKernel approval/resume participation, and `ElectricalSignoffRepairPlan` persistence for failed axes. `ElectricalSignoffRepairRevisionFlowStageExecutor` verifies plan provenance, applies the selected candidate through the native physical-design executor, persists a new digest-bound revision, and marks the required all-axis rerun explicitly.
 
 ### M5 — Release-profile eligibility
 

@@ -4,7 +4,7 @@ import PowerIntent
 import PDKCore
 import PhysicalDesignCore
 import PEXCore
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalTopologySourceBundle: Sendable, Hashable {
     public var request: ElectricalSignoffRequest
@@ -15,7 +15,7 @@ public struct ElectricalTopologySourceBundle: Sendable, Hashable {
     public var parasitic: ParasiticIR?
     public var profile: ElectricalTopologyExtractionProfile
     public var processRules: ElectricalProcessRuleSet?
-    public var sourceReferences: [XcircuiteFileReference]
+    public var sourceReferences: [ArtifactReference]
 
     public init(
         request: ElectricalSignoffRequest,
@@ -26,7 +26,7 @@ public struct ElectricalTopologySourceBundle: Sendable, Hashable {
         parasitic: ParasiticIR?,
         profile: ElectricalTopologyExtractionProfile,
         processRules: ElectricalProcessRuleSet? = nil,
-        sourceReferences: [XcircuiteFileReference]
+        sourceReferences: [ArtifactReference]
     ) {
         self.request = request
         self.design = design

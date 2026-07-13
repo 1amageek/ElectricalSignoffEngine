@@ -5,7 +5,7 @@ import ERCEngine
 import ESDEngine
 import LatchUpEngine
 import AgingEngine
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
     public let powerIntegrity: any PowerIntegrityAnalyzing
@@ -59,7 +59,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
             throw ElectricalSignoffError.invalidConfiguration("analysis axes must be unique")
         }
         let uniqueAxes = axes
-        var cornerResults: [String: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>]] = [:]
+        var cornerResults: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]] = [:]
         for condition in request.configuration.operatingConditions {
             try Task.checkCancellation()
             var cornerRequest = request
@@ -69,11 +69,11 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
             cornerResults[condition.id] = try await executeSingle(cornerRequest, axes: uniqueAxes)
         }
 
-        var results: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>] = [:]
+        var results: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult] = [:]
         for axis in uniqueAxes {
             try Task.checkCancellation()
             let candidates = cornerResults.values.compactMap { $0[axis] }
-            var worst: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>?
+            var worst: ElectricalSignoffResult?
             for candidate in candidates {
                 guard let current = worst else {
                     worst = candidate
@@ -101,11 +101,11 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
     private func executeSingle(
         _ request: ElectricalSignoffRequest,
         axes: [ElectricalSignoffAnalysisAxis]
-    ) async throws -> [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>] {
-        var results: [ElectricalSignoffAnalysisAxis: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>] = [:]
+    ) async throws -> [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult] {
+        var results: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult] = [:]
         for axis in axes {
             try Task.checkCancellation()
-            let result: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>
+            let result: ElectricalSignoffResult
             switch axis {
             case .powerIntegrity:
                 result = try await powerIntegrity.execute(request)
@@ -134,8 +134,8 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
     }
 
     private func isMoreSevere(
-        _ candidate: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>,
-        than current: XcircuiteEngineResultEnvelope<ElectricalSignoffPayload>
+        _ candidate: ElectricalSignoffResult,
+        than current: ElectricalSignoffResult
     ) -> Bool {
         let candidateRank = statusRank(candidate.status)
         let currentRank = statusRank(current.status)
@@ -151,7 +151,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
         return (candidate.payload.cornerID ?? "") < (current.payload.cornerID ?? "")
     }
 
-    private func statusRank(_ status: XcircuiteEngineExecutionStatus) -> Int {
+    private func statusRank(_ status: ElectricalSignoffExecutionStatus) -> Int {
         switch status {
         case .completed: return 0
         case .cancelled: return 1
@@ -160,7 +160,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
         }
     }
 
-    private func aggregateStatus(_ statuses: some Sequence<XcircuiteEngineExecutionStatus>) -> XcircuiteEngineExecutionStatus {
+    private func aggregateStatus(_ statuses: some Sequence<ElectricalSignoffExecutionStatus>) -> ElectricalSignoffExecutionStatus {
         let statuses = Array(statuses)
         if statuses.contains(.failed) {
             return .failed

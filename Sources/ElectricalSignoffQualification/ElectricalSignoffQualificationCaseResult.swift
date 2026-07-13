@@ -1,17 +1,17 @@
 import Foundation
 import ElectricalSignoffCore
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffQualificationCaseResult: Sendable, Hashable, Codable {
     public var caseID: String
     public var axis: ElectricalSignoffAnalysisAxis
     public var cornerID: String?
     public var pdkCornerID: String?
-    public var nativeStatus: XcircuiteEngineExecutionStatus
+    public var nativeStatus: ElectricalSignoffExecutionStatus
     public var nativeViolationCount: Int
     public var nativeDiagnosticCodes: [String]
     public var nativeMetrics: [ElectricalSignoffPayload.Metric]
-    public var nativeArtifacts: [XcircuiteFileReference]
+    public var nativeArtifacts: [ArtifactReference]
     public var metricComparisons: [ElectricalSignoffMetricComparison]
     public var oracle: ElectricalSignoffOracleObservation?
     public var oracleAgreementPassed: Bool?
@@ -23,11 +23,11 @@ public struct ElectricalSignoffQualificationCaseResult: Sendable, Hashable, Coda
         axis: ElectricalSignoffAnalysisAxis,
         cornerID: String? = nil,
         pdkCornerID: String? = nil,
-        nativeStatus: XcircuiteEngineExecutionStatus,
+        nativeStatus: ElectricalSignoffExecutionStatus,
         nativeViolationCount: Int,
         nativeDiagnosticCodes: [String],
         nativeMetrics: [ElectricalSignoffPayload.Metric],
-        nativeArtifacts: [XcircuiteFileReference],
+        nativeArtifacts: [ArtifactReference],
         metricComparisons: [ElectricalSignoffMetricComparison],
         oracle: ElectricalSignoffOracleObservation?,
         oracleAgreementPassed: Bool?,

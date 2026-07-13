@@ -1,26 +1,26 @@
 import Foundation
 import ElectricalSignoffCore
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffOracleObservation: Sendable, Hashable, Codable {
     public var oracleID: String
     public var toolVersion: String
     public var pdkDigest: String
-    public var status: XcircuiteEngineExecutionStatus
+    public var status: ElectricalSignoffExecutionStatus
     public var violationCount: Int
     public var diagnosticCodes: [String]
     public var metrics: [ElectricalSignoffPayload.Metric]
-    public var artifacts: [XcircuiteFileReference]
+    public var artifacts: [ArtifactReference]
 
     public init(
         oracleID: String,
         toolVersion: String,
         pdkDigest: String,
-        status: XcircuiteEngineExecutionStatus,
+        status: ElectricalSignoffExecutionStatus,
         violationCount: Int,
         diagnosticCodes: [String] = [],
         metrics: [ElectricalSignoffPayload.Metric] = [],
-        artifacts: [XcircuiteFileReference] = []
+        artifacts: [ArtifactReference] = []
     ) {
         self.oracleID = oracleID
         self.toolVersion = toolVersion
@@ -60,7 +60,7 @@ public struct ElectricalSignoffOracleObservation: Sendable, Hashable, Codable {
         }
         guard artifacts.allSatisfy({ reference in
             !reference.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && (reference.byteCount == nil || reference.byteCount! >= 0)
+                && reference.byteCount >= 0
         }) else {
             throw ElectricalSignoffQualificationError.invalidSpec("oracle artifact references are invalid")
         }

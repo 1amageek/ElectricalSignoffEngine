@@ -1,14 +1,15 @@
 import Foundation
-import XcircuitePackage
+import ElectricalSignoffCore
+import CircuiteFoundation
 
 public struct ElectricalSignoffExpectedObservation: Sendable, Hashable, Codable {
-    public var status: XcircuiteEngineExecutionStatus
+    public var status: ElectricalSignoffExecutionStatus
     public var violationCount: Int
     public var diagnosticCodes: [String]
     public var metrics: [ElectricalSignoffMetricExpectation]
 
     public init(
-        status: XcircuiteEngineExecutionStatus,
+        status: ElectricalSignoffExecutionStatus,
         violationCount: Int,
         diagnosticCodes: [String] = [],
         metrics: [ElectricalSignoffMetricExpectation] = []

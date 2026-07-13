@@ -1,7 +1,7 @@
 import Foundation
 import ElectricalSignoffCore
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffQualificationReport: Sendable, Hashable, Codable {
     public static let currentSchemaVersion = 1
@@ -88,17 +88,16 @@ public struct ElectricalSignoffQualificationReport: Sendable, Hashable, Codable 
     public func toolEvidence(
         reportPath: String,
         reportSHA256: String?,
+        reportByteCount: UInt64? = nil,
         scope: ToolQualificationScope,
         checkedAt: Date
     ) -> ToolEvidence {
         let usesOracle = qualificationLevel >= .oracleChecked
         let kind: ToolEvidenceKind = usesOracle ? .oracle : .corpus
-        let artifact = XcircuiteFileReference(
-            artifactID: "electrical-signoff-qualification-report",
-            path: reportPath,
-            kind: .report,
-            format: .json,
-            sha256: reportSHA256
+        let artifact = makeReportArtifact(
+            reportPath: reportPath,
+            reportSHA256: reportSHA256,
+            reportByteCount: reportByteCount
         )
         return ToolEvidence(
             evidenceID: "electrical-signoff:\(corpusID):\(corpusVersion)",
@@ -122,5 +121,37 @@ public struct ElectricalSignoffQualificationReport: Sendable, Hashable, Codable 
             ),
             checkedAt: checkedAt
         )
+    }
+
+    private func makeReportArtifact(
+        reportPath: String,
+        reportSHA256: String?,
+        reportByteCount: UInt64?
+    ) -> ArtifactReference? {
+        guard let reportSHA256, let reportByteCount else {
+            return nil
+        }
+        do {
+            let location = try ArtifactLocation(workspaceRelativePath: reportPath)
+            let locator = ArtifactLocator(
+                location: location,
+                role: .output,
+                kind: .report,
+                format: .json
+            )
+            let digest = try ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: reportSHA256
+            )
+            let artifactID = try ArtifactID(rawValue: "electrical-signoff-qualification-report")
+            return ArtifactReference(
+                id: artifactID,
+                locator: locator,
+                digest: digest,
+                byteCount: reportByteCount
+            )
+        } catch {
+            return nil
+        }
     }
 }

@@ -7,7 +7,7 @@ import ElectricalSignoffQualification
 import LogicIR
 import PDKCore
 import PhysicalDesignCore
-import XcircuitePackage
+import CircuiteFoundation
 
 @Suite("Electrical signoff CLI")
 struct ElectricalSignoffCLITests {
@@ -29,24 +29,23 @@ struct ElectricalSignoffCLITests {
         try Data("input".utf8).write(to: inputURL, options: [.atomic])
         try Data("report".utf8).write(to: reportURL, options: [.atomic])
 
-        let hasher = XcircuiteHasher()
         let inputReference = try reference(
             path: "input.json",
             url: inputURL,
             artifactID: "fixture-input",
-            hasher: hasher
+            role: .input
         )
         let reportReference = try reference(
             path: "report.json",
             url: reportURL,
             artifactID: "electrical-report",
-            hasher: hasher
+            role: .output
         )
         let request = ElectricalSignoffRequest(
             runID: "release-cli-run",
             inputs: [inputReference],
             design: LogicDesignReference(
-                artifact: inputReference,
+                artifact: inputReference.locator,
                 topDesignName: "top",
                 designDigest: "design"
             ),
@@ -79,26 +78,30 @@ struct ElectricalSignoffCLITests {
             ),
             cornerID: "typical"
         )
-        let metadata = XcircuiteEngineExecutionMetadata(
-            engineID: "native",
-            implementationID: "native-electrical-signoff",
-            implementationVersion: "1",
+        let provenance = try ExecutionProvenance(
+            producer: try ProducerIdentity(
+                kind: .engine,
+                identifier: "native-electrical-signoff",
+                version: "1"
+            ),
+            inputs: [inputReference],
             startedAt: Date(timeIntervalSince1970: 1),
             completedAt: Date(timeIntervalSince1970: 2)
         )
-        let envelope = XcircuiteEngineResultEnvelope(
+        let axisResult = ElectricalSignoffResult(
             schemaVersion: 1,
             runID: request.runID,
             status: .completed,
+            diagnostics: [],
             artifacts: [reportReference],
-            metadata: metadata,
+            metadata: provenance,
             payload: payload
         )
         let runResult = ElectricalSignoffRunResult(
             runID: request.runID,
             status: .completed,
-            axisResults: [.erc: envelope],
-            cornerResults: ["typical": [.erc: envelope]]
+            axisResults: [.erc: axisResult],
+            cornerResults: ["typical": [.erc: axisResult]]
         )
         let qualificationSpec = ElectricalSignoffQualificationSpec(
             corpusID: "release-cli-corpus",
@@ -150,9 +153,9 @@ struct ElectricalSignoffCLITests {
             requireIndependentOracle: false,
             requireArtifactIntegrityVerification: true
         )
-        let integrity = XcircuiteFileReferenceVerifier().verify(
+        let integrity = LocalArtifactVerifier().verify(
             reportReference,
-            projectRoot: root
+            relativeTo: root
         )
         let gateRequest = ElectricalSignoffReleaseGateRequest(
             runID: request.runID,
@@ -188,15 +191,18 @@ struct ElectricalSignoffCLITests {
         path: String,
         url: URL,
         artifactID: String,
-        hasher: XcircuiteHasher
-    ) throws -> XcircuiteFileReference {
-        XcircuiteFileReference(
-            artifactID: artifactID,
-            path: path,
-            kind: .report,
-            format: .json,
-            sha256: try hasher.sha256(fileAt: url),
-            byteCount: try hasher.byteCount(fileAt: url)
+        role: ArtifactRole
+    ) throws -> ArtifactReference {
+        try ArtifactReference(
+            id: ArtifactID(rawValue: artifactID),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: path),
+                role: role,
+                kind: .report,
+                format: .json
+            ),
+            digest: SHA256ContentDigester().digest(fileAt: url, using: .sha256),
+            byteCount: UInt64(try Data(contentsOf: url).count)
         )
     }
 }

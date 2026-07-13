@@ -7,13 +7,13 @@ import LogicIR
 import PDKCore
 import PhysicalDesignCore
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 @Suite("Electrical signoff qualification")
 struct ElectricalSignoffQualificationTests {
     @Test("native corpus result is corpus-qualified but not oracle-qualified", .timeLimit(.minutes(1)))
     func nativeCorpusResult() async throws {
-        let testCase = makeCase()
+        let testCase = try makeCase()
         let spec = ElectricalSignoffQualificationSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
@@ -33,6 +33,7 @@ struct ElectricalSignoffQualificationTests {
         let evidence = report.toolEvidence(
             reportPath: "reports/electrical-corpus.json",
             reportSHA256: String(repeating: "a", count: 64),
+            reportByteCount: 1,
             scope: makeScope(),
             checkedAt: Date(timeIntervalSince1970: 1_000)
         )
@@ -42,7 +43,7 @@ struct ElectricalSignoffQualificationTests {
 
     @Test("independent oracle agreement promotes the report to oracle-checked", .timeLimit(.minutes(1)))
     func independentOracleAgreement() async throws {
-        let testCase = makeCase()
+        let testCase = try makeCase()
         let spec = ElectricalSignoffQualificationSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
@@ -62,7 +63,7 @@ struct ElectricalSignoffQualificationTests {
 
     @Test("required oracle disagreement cannot qualify the corpus", .timeLimit(.minutes(1)))
     func oracleDisagreementBlocksQualification() async throws {
-        let testCase = makeCase()
+        let testCase = try makeCase()
         let spec = ElectricalSignoffQualificationSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
@@ -82,7 +83,7 @@ struct ElectricalSignoffQualificationTests {
 
     @Test("local oracle observation artifacts are independently validated and addressable", .timeLimit(.minutes(1)))
     func localOracleObservationArtifact() async throws {
-        let testCase = makeCase()
+        let testCase = try makeCase()
         let observation = ElectricalSignoffOracleObservation(
             oracleID: "commercial-electrical-oracle",
             toolVersion: "fixture-1",
@@ -107,12 +108,25 @@ struct ElectricalSignoffQualificationTests {
         #expect(loaded == observation)
     }
 
-    private func makeCase() -> ElectricalSignoffQualificationCase {
-        let reference = XcircuiteFileReference(path: "fixture.json", kind: .other, format: .json)
+    private func makeCase() throws -> ElectricalSignoffQualificationCase {
+        let reference = try ArtifactReference(
+            id: ArtifactID(rawValue: "fixture"),
+            locator: ArtifactLocator(
+                location: ArtifactLocation(workspaceRelativePath: "fixture.json"),
+                role: .input,
+                kind: .other,
+                format: .json
+            ),
+            digest: ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: String(repeating: "a", count: 64)
+            ),
+            byteCount: 1
+        )
         let request = ElectricalSignoffRequest(
             runID: "qualification-run",
             inputs: [reference],
-            design: LogicDesignReference(artifact: reference, topDesignName: "top", designDigest: "design"),
+            design: LogicDesignReference(artifact: reference.locator, topDesignName: "top", designDigest: "design"),
             physicalDesign: PhysicalDesignReference(layoutArtifact: reference, topCell: "top", layoutDigest: "layout"),
             pdk: PDKReference(manifest: reference, processID: "fixture", version: "1", digest: "pdk-digest"),
             configuration: ElectricalSignoffConfiguration(requiredAxes: [.erc])
@@ -146,10 +160,12 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
         _ request: ElectricalSignoffRequest,
         axes: [ElectricalSignoffAnalysisAxis]
     ) async throws -> ElectricalSignoffRunResult {
-        let metadata = XcircuiteEngineExecutionMetadata(
-            engineID: "stub",
-            implementationID: "stub",
-            implementationVersion: "1",
+        let provenance = try ExecutionProvenance(
+            producer: try ProducerIdentity(
+                kind: .engine,
+                identifier: "stub",
+                version: "1"
+            ),
             startedAt: Date(timeIntervalSince1970: 1),
             completedAt: Date(timeIntervalSince1970: 1)
         )
@@ -160,11 +176,11 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
                 metrics: [ElectricalSignoffPayload.Metric(name: "erc-violations", value: 0, unit: "count")],
                 cornerID: request.configuration.operatingCondition.id
             )
-            return (axis, XcircuiteEngineResultEnvelope(
+            return (axis, ElectricalSignoffResult(
                 schemaVersion: 1,
                 runID: request.runID,
                 status: .completed,
-                metadata: metadata,
+                metadata: provenance,
                 payload: payload
             ))
         })

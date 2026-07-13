@@ -2,7 +2,7 @@ import Foundation
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
 import ToolQualification
-import XcircuitePackage
+import CircuiteFoundation
 
 public struct ElectricalSignoffQualificationRunner: Sendable {
     public let engine: any ElectricalSignoffExecuting
@@ -66,11 +66,11 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
         _ testCase: ElectricalSignoffQualificationCase,
         spec: ElectricalSignoffQualificationSpec
     ) async -> ElectricalSignoffQualificationCaseResult {
-        var nativeStatus: XcircuiteEngineExecutionStatus = .failed
+        var nativeStatus: ElectricalSignoffExecutionStatus = .failed
         var nativeViolationCount = 0
         var nativeDiagnosticCodes: [String] = []
         var nativeMetrics: [ElectricalSignoffPayload.Metric] = []
-        var nativeArtifacts: [XcircuiteFileReference] = []
+        var nativeArtifacts: [ArtifactReference] = []
         var failureCodes: [String] = []
 
         do {
@@ -80,7 +80,7 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
             }
             nativeStatus = envelope.status
             nativeViolationCount = envelope.payload.violationCount
-            nativeDiagnosticCodes = envelope.diagnostics.map(\.code).sorted()
+            nativeDiagnosticCodes = envelope.diagnostics.map { $0.code.rawValue }.sorted()
             nativeMetrics = envelope.payload.metrics
             nativeArtifacts = envelope.artifacts
         } catch {
