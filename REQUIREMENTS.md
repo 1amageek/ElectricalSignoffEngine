@@ -44,4 +44,4 @@ Evaluate power integrity and electrical reliability against one shared extracted
 - Contract and parser round-trip tests
 - Reference corpus
 - Capability and limitation report
-- Xcircuite stage adapter tests
+- Xcircuite stage composition tests using direct protocol conformance

@@ -22,13 +22,13 @@ public struct ElectricalSignoffExpectedObservation: Sendable, Hashable, Codable 
 
     public func validate() throws {
         guard violationCount >= 0 else {
-            throw ElectricalSignoffQualificationError.invalidSpec("expected violation count cannot be negative")
+            throw ElectricalSignoffCorpusError.invalidSpec("expected violation count cannot be negative")
         }
         for metric in metrics {
             try metric.validate()
         }
         guard Set(metrics.map(\.name)).count == metrics.count else {
-            throw ElectricalSignoffQualificationError.invalidSpec("expected metric names must be unique")
+            throw ElectricalSignoffCorpusError.invalidSpec("expected metric names must be unique")
         }
     }
 }

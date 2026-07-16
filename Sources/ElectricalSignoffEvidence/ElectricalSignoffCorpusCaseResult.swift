@@ -2,7 +2,7 @@ import Foundation
 import ElectricalSignoffCore
 import CircuiteFoundation
 
-public struct ElectricalSignoffQualificationCaseResult: Sendable, Hashable, Codable {
+public struct ElectricalSignoffCorpusCaseResult: Sendable, Hashable, Codable {
     public var caseID: String
     public var axis: ElectricalSignoffAnalysisAxis
     public var cornerID: String?

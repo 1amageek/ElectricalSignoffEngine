@@ -2,89 +2,79 @@ import Foundation
 import Testing
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
-import ElectricalSignoffQualification
+import ElectricalSignoffEvidence
 import LogicIR
 import PDKCore
 import PhysicalDesignCore
-import ToolQualification
 import CircuiteFoundation
 
-@Suite("Electrical signoff qualification")
-struct ElectricalSignoffQualificationTests {
-    @Test("native corpus result is corpus-qualified but not oracle-qualified", .timeLimit(.minutes(1)))
+@Suite("Electrical signoff corpus observations")
+struct ElectricalSignoffEvidenceTests {
+    @Test("native corpus result records corpus observations", .timeLimit(.minutes(1)))
     func nativeCorpusResult() async throws {
         let testCase = try makeCase()
-        let spec = ElectricalSignoffQualificationSpec(
+        let spec = ElectricalSignoffCorpusSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
             pdkDigest: "pdk-digest",
             cases: [testCase]
         )
-        let report = try await ElectricalSignoffQualificationRunner(
+        let report = try await ElectricalSignoffCorpusRunner(
             engine: StubElectricalSignoffEngine()
         ).run(spec: spec, generatedAt: Date(timeIntervalSince1970: 1_000))
 
         #expect(report.passed)
-        #expect(report.qualificationLevel == .corpusChecked)
+        #expect(report.observationMaturity == .corpusObserved)
         #expect(report.caseCount == 1)
         #expect(report.matchedCaseCount == 1)
         #expect(report.caseResults.first?.cornerID == "typical")
         #expect(report.caseResults.first?.pdkCornerID == "typical")
-        let evidence = report.toolEvidence(
-            reportPath: "reports/electrical-corpus.json",
-            reportSHA256: String(repeating: "a", count: 64),
-            reportByteCount: 1,
-            scope: makeScope(),
-            checkedAt: Date(timeIntervalSince1970: 1_000)
-        )
-        #expect(evidence.kind == .corpus)
-        #expect(evidence.qualification?.qualified == true)
     }
 
-    @Test("independent oracle agreement promotes the report to oracle-checked", .timeLimit(.minutes(1)))
+    @Test("external oracle agreement records correlated observations", .timeLimit(.minutes(1)))
     func independentOracleAgreement() async throws {
         let testCase = try makeCase()
-        let spec = ElectricalSignoffQualificationSpec(
+        let spec = ElectricalSignoffCorpusSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
             pdkDigest: "pdk-digest",
-            requireIndependentOracle: true,
+            requireExternalOracleEvidence: true,
             cases: [testCase]
         )
-        let report = try await ElectricalSignoffQualificationRunner(
+        let report = try await ElectricalSignoffCorpusRunner(
             engine: StubElectricalSignoffEngine(),
             oracle: StubElectricalSignoffOracle()
         ).run(spec: spec)
 
         #expect(report.passed)
-        #expect(report.qualificationLevel == .oracleChecked)
+        #expect(report.observationMaturity == .oracleCorrelated)
         #expect(report.oracleAgreementCount == 1)
     }
 
-    @Test("required oracle disagreement cannot qualify the corpus", .timeLimit(.minutes(1)))
-    func oracleDisagreementBlocksQualification() async throws {
+    @Test("required oracle disagreement fails corpus observation matching", .timeLimit(.minutes(1)))
+    func oracleDisagreementFailsCorpus() async throws {
         let testCase = try makeCase()
-        let spec = ElectricalSignoffQualificationSpec(
+        let spec = ElectricalSignoffCorpusSpec(
             corpusID: "electrical-fixture",
             corpusVersion: "1",
             pdkDigest: "pdk-digest",
-            requireIndependentOracle: true,
+            requireExternalOracleEvidence: true,
             cases: [testCase]
         )
-        let report = try await ElectricalSignoffQualificationRunner(
+        let report = try await ElectricalSignoffCorpusRunner(
             engine: StubElectricalSignoffEngine(),
             oracle: DisagreeingElectricalSignoffOracle()
         ).run(spec: spec)
 
         #expect(!report.passed)
-        #expect(report.qualificationLevel == .unknown)
+        #expect(report.observationMaturity == .oracleCorrelated)
         #expect(report.failureCodes.contains("oracle-disagreement"))
     }
 
-    @Test("local oracle observation artifacts are independently validated and addressable", .timeLimit(.minutes(1)))
+    @Test("local oracle observation artifacts are integrity-bound and addressable", .timeLimit(.minutes(1)))
     func localOracleObservationArtifact() async throws {
         let testCase = try makeCase()
-        let observation = ElectricalSignoffOracleObservation(
+        let observation = try makeTestOracleObservation(
             oracleID: "commercial-electrical-oracle",
             toolVersion: "fixture-1",
             pdkDigest: testCase.request.pdk.digest,
@@ -92,7 +82,7 @@ struct ElectricalSignoffQualificationTests {
             violationCount: 0,
             metrics: [ElectricalSignoffPayload.Metric(name: "erc-violations", value: 0, unit: "count")]
         )
-        let oracle = try LocalElectricalSignoffQualificationOracle(
+        let oracle = try LocalElectricalSignoffOracle(
             observationSet: ElectricalSignoffOracleObservationSet(
                 oracleID: observation.oracleID,
                 toolVersion: observation.toolVersion,
@@ -108,7 +98,7 @@ struct ElectricalSignoffQualificationTests {
         #expect(loaded == observation)
     }
 
-    private func makeCase() throws -> ElectricalSignoffQualificationCase {
+    private func makeCase() throws -> ElectricalSignoffCorpusCase {
         let reference = try ArtifactReference(
             id: ArtifactID(rawValue: "fixture"),
             locator: ArtifactLocator(
@@ -131,7 +121,7 @@ struct ElectricalSignoffQualificationTests {
             pdk: PDKReference(manifest: reference, processID: "fixture", version: "1", digest: "pdk-digest"),
             configuration: ElectricalSignoffConfiguration(requiredAxes: [.erc])
         )
-        return ElectricalSignoffQualificationCase(
+        return ElectricalSignoffCorpusCase(
             caseID: "clean-erc",
             kind: .positive,
             axis: .erc,
@@ -144,15 +134,6 @@ struct ElectricalSignoffQualificationTests {
         )
     }
 
-    private func makeScope() -> ToolQualificationScope {
-        ToolQualificationScope(
-            implementationID: "native-electrical-signoff",
-            binaryDigest: String(repeating: "b", count: 64),
-            algorithmVersion: "1",
-            processProfileID: "fixture",
-            deckDigest: "pdk-digest"
-        )
-    }
 }
 
 private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
@@ -188,9 +169,9 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
     }
 }
 
-private struct StubElectricalSignoffOracle: ElectricalSignoffQualificationOracle {
-    func evaluate(_ testCase: ElectricalSignoffQualificationCase) async throws -> ElectricalSignoffOracleObservation {
-        ElectricalSignoffOracleObservation(
+private struct StubElectricalSignoffOracle: ElectricalSignoffOracle {
+    func evaluate(_ testCase: ElectricalSignoffCorpusCase) async throws -> ElectricalSignoffOracleObservation {
+        try makeTestOracleObservation(
             oracleID: "commercial-electrical-oracle",
             toolVersion: "fixture-1",
             pdkDigest: testCase.request.pdk.digest,
@@ -201,9 +182,9 @@ private struct StubElectricalSignoffOracle: ElectricalSignoffQualificationOracle
     }
 }
 
-private struct DisagreeingElectricalSignoffOracle: ElectricalSignoffQualificationOracle {
-    func evaluate(_ testCase: ElectricalSignoffQualificationCase) async throws -> ElectricalSignoffOracleObservation {
-        ElectricalSignoffOracleObservation(
+private struct DisagreeingElectricalSignoffOracle: ElectricalSignoffOracle {
+    func evaluate(_ testCase: ElectricalSignoffCorpusCase) async throws -> ElectricalSignoffOracleObservation {
+        try makeTestOracleObservation(
             oracleID: "commercial-electrical-oracle",
             toolVersion: "fixture-1",
             pdkDigest: testCase.request.pdk.digest,

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LocalElectricalSignoffQualificationOracle: ElectricalSignoffQualificationOracle, Sendable {
+public struct LocalElectricalSignoffOracle: ElectricalSignoffOracle, Sendable {
     private let observations: [String: ElectricalSignoffOracleObservation]
 
     public init(observationSet: ElectricalSignoffOracleObservationSet) throws {
@@ -17,13 +17,13 @@ public struct LocalElectricalSignoffQualificationOracle: ElectricalSignoffQualif
     }
 
     public func evaluate(
-        _ testCase: ElectricalSignoffQualificationCase
+        _ testCase: ElectricalSignoffCorpusCase
     ) async throws -> ElectricalSignoffOracleObservation {
         guard let observation = observations[testCase.caseID] else {
-            throw ElectricalSignoffQualificationError.oracleUnavailable(testCase.caseID)
+            throw ElectricalSignoffCorpusError.oracleUnavailable(testCase.caseID)
         }
         guard observation.pdkDigest.caseInsensitiveCompare(testCase.request.pdk.digest) == .orderedSame else {
-            throw ElectricalSignoffQualificationError.invalidSpec(
+            throw ElectricalSignoffCorpusError.invalidSpec(
                 "oracle observation PDK digest does not match case \(testCase.caseID)"
             )
         }

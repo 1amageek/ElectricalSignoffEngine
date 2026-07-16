@@ -1,17 +1,16 @@
 import Foundation
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
-import ToolQualification
 import CircuiteFoundation
 
-public struct ElectricalSignoffQualificationRunner: Sendable {
+public struct ElectricalSignoffCorpusRunner: Sendable {
     public let engine: any ElectricalSignoffExecuting
-    public let oracle: (any ElectricalSignoffQualificationOracle)?
+    public let oracle: (any ElectricalSignoffOracle)?
     public let implementationID: String
 
     public init(
         engine: any ElectricalSignoffExecuting,
-        oracle: (any ElectricalSignoffQualificationOracle)? = nil,
+        oracle: (any ElectricalSignoffOracle)? = nil,
         implementationID: String = "ElectricalSignoffEngine"
     ) {
         self.engine = engine
@@ -20,11 +19,11 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
     }
 
     public func run(
-        spec: ElectricalSignoffQualificationSpec,
+        spec: ElectricalSignoffCorpusSpec,
         generatedAt: Date = Date()
-    ) async throws -> ElectricalSignoffQualificationReport {
+    ) async throws -> ElectricalSignoffCorpusReport {
         try spec.validate()
-        var results: [ElectricalSignoffQualificationCaseResult] = []
+        var results: [ElectricalSignoffCorpusCaseResult] = []
         for testCase in spec.cases {
             results.append(await evaluate(testCase, spec: spec))
         }
@@ -32,22 +31,20 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
         let passed = results.allSatisfy(\.passed)
         let runIDs = Set(spec.cases.map(\.request.runID))
         let reportRunID = runIDs.count == 1 ? runIDs.first : nil
-        let hasIndependentOracle = results.allSatisfy { result in
-            result.oracle?.isIndependent == true && result.oracleAgreementPassed == true
+        let hasExternalOracleEvidence = results.allSatisfy { result in
+            result.oracle?.hasEvidenceBinding == true
         }
-        let level: ToolQualificationLevel
-        if !passed {
-            level = .unknown
-        } else if hasIndependentOracle {
-            level = .oracleChecked
-        } else {
-            level = .corpusChecked
+        let hasExternalOracleAgreement = results.allSatisfy { result in
+            result.oracleAgreementPassed == true
         }
+        let maturity: ElectricalSignoffObservationMaturity = hasExternalOracleEvidence
+            ? .oracleCorrelated
+            : .corpusObserved
         var failureCodes = Array(Set(results.flatMap(\.failureCodes))).sorted()
-        if spec.requireIndependentOracle && !hasIndependentOracle {
-            failureCodes.append("independent-oracle-required")
+        if spec.requireExternalOracleEvidence && !hasExternalOracleEvidence {
+            failureCodes.append("external-oracle-evidence-required")
         }
-        return ElectricalSignoffQualificationReport(
+        return ElectricalSignoffCorpusReport(
             corpusID: spec.corpusID,
             corpusVersion: spec.corpusVersion,
             pdkDigest: spec.pdkDigest,
@@ -55,17 +52,17 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
             implementationID: implementationID,
             generatedAt: generatedAt,
             completed: true,
-            passed: passed && (!spec.requireIndependentOracle || hasIndependentOracle),
-            qualificationLevel: spec.requireIndependentOracle && !hasIndependentOracle ? .unknown : level,
+            passed: passed && (!spec.requireExternalOracleEvidence || hasExternalOracleAgreement),
+            observationMaturity: maturity,
             caseResults: results,
             failureCodes: Array(Set(failureCodes)).sorted()
         )
     }
 
     private func evaluate(
-        _ testCase: ElectricalSignoffQualificationCase,
-        spec: ElectricalSignoffQualificationSpec
-    ) async -> ElectricalSignoffQualificationCaseResult {
+        _ testCase: ElectricalSignoffCorpusCase,
+        spec: ElectricalSignoffCorpusSpec
+    ) async -> ElectricalSignoffCorpusCaseResult {
         var nativeStatus: ElectricalSignoffExecutionStatus = .failed
         var nativeViolationCount = 0
         var nativeDiagnosticCodes: [String] = []
@@ -76,7 +73,7 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
         do {
             let runResult = try await engine.execute(testCase.request, axes: [testCase.axis])
             guard let envelope = runResult.axisResults[testCase.axis] else {
-                throw ElectricalSignoffQualificationError.missingAxisResult(testCase.axis.rawValue)
+                throw ElectricalSignoffCorpusError.missingAxisResult(testCase.axis.rawValue)
             }
             nativeStatus = envelope.status
             nativeViolationCount = envelope.payload.violationCount
@@ -85,7 +82,7 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
             nativeArtifacts = envelope.artifacts
         } catch {
             failureCodes.append("native-execution-error")
-            nativeDiagnosticCodes.append("qualification.native-execution-error")
+            nativeDiagnosticCodes.append("corpus.native-execution-error")
         }
 
         let metricComparisons = testCase.expected.metrics.map { expectation in
@@ -120,8 +117,8 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
         if let oracle {
             do {
                 oracleObservation = try await oracle.evaluate(testCase)
-                if oracleObservation?.isIndependent != true {
-                    failureCodes.append("independent-oracle-invalid")
+                if oracleObservation?.hasEvidenceBinding != true {
+                    failureCodes.append("oracle-evidence-binding-invalid")
                 }
                 if oracleObservation?.pdkDigest != spec.pdkDigest {
                     failureCodes.append("oracle-pdk-digest-mismatch")
@@ -132,13 +129,13 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
             }
         } else {
             oracleObservation = nil
-            if spec.requireIndependentOracle {
-                failureCodes.append("independent-oracle-missing")
+            if spec.requireExternalOracleEvidence {
+                failureCodes.append("external-oracle-evidence-missing")
             }
         }
 
         let oracleAgreementPassed = oracleObservation.map { observation in
-            let agrees = observation.isIndependent
+            let agrees = observation.hasEvidenceBinding
                 && observation.pdkDigest == spec.pdkDigest
                 && observation.status == nativeStatus
                 && observation.violationCount == nativeViolationCount
@@ -156,7 +153,7 @@ public struct ElectricalSignoffQualificationRunner: Sendable {
             return agrees
         }
 
-        return ElectricalSignoffQualificationCaseResult(
+        return ElectricalSignoffCorpusCaseResult(
             caseID: testCase.caseID,
             axis: testCase.axis,
             cornerID: testCase.request.configuration.operatingCondition.id,

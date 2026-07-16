@@ -23,7 +23,7 @@ ElectricalSignoffEngine protocols and result schemas
                  ↓
 native or external-tool backends
                  ↓
-Xcircuite stage adapters
+Xcircuite composition and stage execution
                  ↓
 DesignFlowKernel and .xcircuite artifacts
 ```
@@ -40,7 +40,7 @@ Kernel availability, corpus validation, oracle correlation, process-scoped quali
 
 All outputs are immutable run artifacts with format, digest, producer metadata and the input design/PDK revision needed to reproduce the result.
 
-`LocalElectricalArtifactStore` writes report JSON under `.xcircuite/runs/<run-id>/electrical-signoff/`; `InMemoryElectricalArtifactStore` is available for unit tests and injected adapters. Neither store changes the design or layout.
+`LocalElectricalArtifactStore` writes report JSON under `.xcircuite/runs/<run-id>/electrical-signoff/`; `InMemoryElectricalArtifactStore` is available for unit tests and injected protocol implementations. Neither store changes the design or layout.
 
 ## Qualification boundary
 
@@ -56,4 +56,8 @@ flowchart LR
   Trust --> Release[Release eligibility]
 ```
 
-The runner records native artifacts and oracle observations in each case result. A native-only pass is corpus evidence; it is not process qualification. The release layer must supply a real PDK scope, fresh evidence and an independent oracle before selecting a production policy.
+The runner records native artifacts and oracle observations in each case result.
+An oracle observation is independent only when its immutable qualification
+artifact binds a distinct oracle binary and exact input/output artifacts to the
+same process scope. A native-only pass is corpus evidence; it is not process
+qualification.

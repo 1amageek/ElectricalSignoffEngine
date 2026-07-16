@@ -1,23 +1,23 @@
 import Foundation
 import ElectricalSignoffCore
 
-public enum ElectricalSignoffQualificationCaseKind: String, Sendable, Hashable, Codable {
+public enum ElectricalSignoffCorpusCaseKind: String, Sendable, Hashable, Codable {
     case positive
     case negative
     case boundary
     case regression
 }
 
-public struct ElectricalSignoffQualificationCase: Sendable, Hashable, Codable {
+public struct ElectricalSignoffCorpusCase: Sendable, Hashable, Codable {
     public var caseID: String
-    public var kind: ElectricalSignoffQualificationCaseKind
+    public var kind: ElectricalSignoffCorpusCaseKind
     public var axis: ElectricalSignoffAnalysisAxis
     public var request: ElectricalSignoffRequest
     public var expected: ElectricalSignoffExpectedObservation
 
     public init(
         caseID: String,
-        kind: ElectricalSignoffQualificationCaseKind,
+        kind: ElectricalSignoffCorpusCaseKind,
         axis: ElectricalSignoffAnalysisAxis,
         request: ElectricalSignoffRequest,
         expected: ElectricalSignoffExpectedObservation
@@ -31,13 +31,13 @@ public struct ElectricalSignoffQualificationCase: Sendable, Hashable, Codable {
 
     public func validate(pdkDigest: String) throws {
         guard !caseID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ElectricalSignoffQualificationError.invalidSpec("case IDs are required")
+            throw ElectricalSignoffCorpusError.invalidSpec("case IDs are required")
         }
         guard axis != .aggregate else {
-            throw ElectricalSignoffQualificationError.invalidSpec("aggregate is not a qualification axis")
+            throw ElectricalSignoffCorpusError.invalidSpec("aggregate is not a corpus axis")
         }
         guard request.pdk.digest.caseInsensitiveCompare(pdkDigest) == .orderedSame else {
-            throw ElectricalSignoffQualificationError.invalidSpec(
+            throw ElectricalSignoffCorpusError.invalidSpec(
                 "case \(caseID) PDK digest does not match the corpus scope"
             )
         }

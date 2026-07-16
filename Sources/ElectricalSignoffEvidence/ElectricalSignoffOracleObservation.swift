@@ -10,7 +10,9 @@ public struct ElectricalSignoffOracleObservation: Sendable, Hashable, Codable {
     public var violationCount: Int
     public var diagnosticCodes: [String]
     public var metrics: [ElectricalSignoffPayload.Metric]
+    public var inputArtifacts: [ArtifactReference]
     public var artifacts: [ArtifactReference]
+    public var evidenceArtifact: ArtifactReference
 
     public init(
         oracleID: String,
@@ -20,7 +22,9 @@ public struct ElectricalSignoffOracleObservation: Sendable, Hashable, Codable {
         violationCount: Int,
         diagnosticCodes: [String] = [],
         metrics: [ElectricalSignoffPayload.Metric] = [],
-        artifacts: [ArtifactReference] = []
+        inputArtifacts: [ArtifactReference],
+        artifacts: [ArtifactReference],
+        evidenceArtifact: ArtifactReference
     ) {
         self.oracleID = oracleID
         self.toolVersion = toolVersion
@@ -29,40 +33,47 @@ public struct ElectricalSignoffOracleObservation: Sendable, Hashable, Codable {
         self.violationCount = violationCount
         self.diagnosticCodes = diagnosticCodes.sorted()
         self.metrics = metrics
+        self.inputArtifacts = inputArtifacts
         self.artifacts = artifacts
+        self.evidenceArtifact = evidenceArtifact
     }
 
-    public var isIndependent: Bool {
-        let normalized = oracleID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return !normalized.isEmpty
-            && normalized != "native"
-            && !normalized.contains("electricalsignoffengine")
-            && !normalized.contains("native-electrical")
+    public var hasEvidenceBinding: Bool {
+        !inputArtifacts.isEmpty
+            && artifacts.contains(evidenceArtifact)
+            && Self.isValidArtifact(evidenceArtifact)
     }
 
     public func validate() throws {
         guard !oracleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !toolVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !pdkDigest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              isIndependent,
+              hasEvidenceBinding,
               violationCount >= 0 else {
-            throw ElectricalSignoffQualificationError.invalidSpec("oracle observation identity or violation count is invalid")
+            throw ElectricalSignoffCorpusError.invalidSpec("oracle observation identity or violation count is invalid")
         }
         guard Set(diagnosticCodes).count == diagnosticCodes.count else {
-            throw ElectricalSignoffQualificationError.invalidSpec("oracle diagnostic codes must be unique")
+            throw ElectricalSignoffCorpusError.invalidSpec("oracle diagnostic codes must be unique")
         }
         guard metrics.allSatisfy({
             !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && !$0.unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && $0.value.isFinite
         }), Set(metrics.map(\.name)).count == metrics.count else {
-            throw ElectricalSignoffQualificationError.invalidSpec("oracle metrics must have unique finite names and units")
+            throw ElectricalSignoffCorpusError.invalidSpec("oracle metrics must have unique finite names and units")
         }
-        guard artifacts.allSatisfy({ reference in
-            !reference.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && reference.byteCount >= 0
-        }) else {
-            throw ElectricalSignoffQualificationError.invalidSpec("oracle artifact references are invalid")
+        guard !inputArtifacts.isEmpty,
+              inputArtifacts.allSatisfy(Self.isValidArtifact),
+              !artifacts.isEmpty,
+              artifacts.allSatisfy(Self.isValidArtifact) else {
+            throw ElectricalSignoffCorpusError.invalidSpec("oracle input and output artifact references are invalid")
         }
+    }
+
+    private static func isValidArtifact(_ reference: ArtifactReference) -> Bool {
+        !reference.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && reference.byteCount > 0
+            && reference.digest.algorithm == .sha256
+            && reference.digest.hexadecimalValue.utf8.count == 64
     }
 }

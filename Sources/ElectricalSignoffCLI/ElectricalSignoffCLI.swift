@@ -1,7 +1,7 @@
 import Foundation
 import ElectricalSignoffCore
 import ElectricalSignoffEngine
-import ElectricalSignoffQualification
+import ElectricalSignoffEvidence
 import CircuiteFoundation
 
 @main
@@ -18,77 +18,13 @@ public struct ElectricalSignoffCLI {
                 print(usage)
                 return 0
             }
-            if let processQualificationRequestPath = options.processQualificationRequestPath {
-                guard options.requestPath == nil,
-                      options.qualificationSpecPath == nil,
-                      options.oracleObservationsPath == nil,
-                      options.releaseGateRequestPath == nil,
-                      !options.extractTopology,
-                      !options.allowUnverifiedInputs else {
-                    throw CLIError.conflictingOptions(
-                        "--process-qualification-request cannot be combined with analysis, qualification, release-gate or unverified-input options"
-                    )
-                }
-                let requestURL = URL(filePath: processQualificationRequestPath).standardizedFileURL
-                let requestData = try Data(contentsOf: requestURL)
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let request = try decoder.decode(
-                    ElectricalSignoffProcessQualificationRequest.self,
-                    from: requestData
-                )
-                let projectRoot = options.projectRoot.map { URL(filePath: $0).standardizedFileURL }
-                    ?? requestURL.deletingLastPathComponent()
-                let integrityIssues = DefaultElectricalSignoffProcessQualificationArtifactVerifier().verify(
-                    request,
-                    projectRoot: projectRoot
-                )
-                guard integrityIssues.isEmpty else {
-                    let message = integrityIssues.map { issue in
-                        let codes = issue.integrity.issues.map(\.code.rawValue).joined(separator: ",")
-                        return "\(issue.category):\(codes)"
-                    }.joined(separator: ",")
-                    throw CLIError.invalidArtifact(message)
-                }
-                let result = try DefaultElectricalSignoffProcessQualificationEvaluator().evaluate(request)
-                let output = try encode(processQualificationResult: result, pretty: options.pretty)
-                try write(output, outputPath: options.outputPath)
-                return result.qualified ? 0 : 2
-            }
-            if let releaseGateRequestPath = options.releaseGateRequestPath {
-                guard options.requestPath == nil,
-                      options.qualificationSpecPath == nil,
-                      options.oracleObservationsPath == nil,
-                      !options.extractTopology,
-                      !options.allowUnverifiedInputs else {
-                    throw CLIError.conflictingOptions(
-                        "--release-gate-request cannot be combined with analysis, qualification or unverified-input options"
-                    )
-                }
-                let requestURL = URL(filePath: releaseGateRequestPath).standardizedFileURL
-                let requestData = try Data(contentsOf: requestURL)
-                var gateRequest = try JSONDecoder().decode(
-                    ElectricalSignoffReleaseGateRequest.self,
-                    from: requestData
-                )
-                let projectRoot = options.projectRoot.map { URL(filePath: $0).standardizedFileURL }
-                    ?? requestURL.deletingLastPathComponent()
-                gateRequest.artifactIntegrity = verifyArtifactIntegrity(
-                    gateRequest.artifactIntegrity,
-                    projectRoot: projectRoot
-                )
-                let result = try DefaultElectricalSignoffReleaseGateEvaluator().evaluate(gateRequest)
-                let output = try encode(releaseGateResult: result, pretty: options.pretty)
-                try write(output, outputPath: options.outputPath)
-                return result.status == .passed ? 0 : 2
-            }
-            if let qualificationSpecPath = options.qualificationSpecPath {
+            if let corpusSpecPath = options.corpusSpecPath {
                 guard options.requestPath == nil, !options.extractTopology else {
-                    throw CLIError.conflictingOptions("--qualification-spec cannot be combined with --request or --extract-topology")
+                    throw CLIError.conflictingOptions("--corpus-spec cannot be combined with --request or --extract-topology")
                 }
-                let specURL = URL(filePath: qualificationSpecPath).standardizedFileURL
+                let specURL = URL(filePath: corpusSpecPath).standardizedFileURL
                 let specData = try Data(contentsOf: specURL)
-                let spec = try JSONDecoder().decode(ElectricalSignoffQualificationSpec.self, from: specData)
+                let spec = try JSONDecoder().decode(ElectricalSignoffCorpusSpec.self, from: specData)
                 let projectRoot = options.projectRoot.map { URL(filePath: $0) }
                     ?? specURL.deletingLastPathComponent()
                 let support = ElectricalSignoffExecutionSupport(
@@ -97,9 +33,9 @@ public struct ElectricalSignoffCLI {
                     artifactStore: LocalElectricalArtifactStore(projectRoot: projectRoot)
                 )
                 let oracle = try options.oracleObservationsPath.map {
-                    try LocalElectricalSignoffQualificationOracle(contentsOf: URL(filePath: $0).standardizedFileURL)
+                    try LocalElectricalSignoffOracle(contentsOf: URL(filePath: $0).standardizedFileURL)
                 }
-                let report = try await ElectricalSignoffQualificationRunner(
+                let report = try await ElectricalSignoffCorpusRunner(
                     engine: ElectricalSignoffEngine(support: support),
                     oracle: oracle
                 ).run(spec: spec)
@@ -109,9 +45,7 @@ public struct ElectricalSignoffCLI {
             }
 
             guard let requestPath = options.requestPath else {
-                throw CLIError.missingOption(
-                    "--request, --qualification-spec, --process-qualification-request or --release-gate-request"
-                )
+                throw CLIError.missingOption("--request or --corpus-spec")
             }
             let requestURL = URL(filePath: requestPath).standardizedFileURL
             let data = try Data(contentsOf: requestURL)
@@ -164,42 +98,11 @@ public struct ElectricalSignoffCLI {
         return try encoder.encode(topology)
     }
 
-    private static func encode(report: ElectricalSignoffQualificationReport, pretty: Bool) throws -> Data {
+    private static func encode(report: ElectricalSignoffCorpusReport, pretty: Bool) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = pretty ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         return try encoder.encode(report)
-    }
-
-    private static func encode(
-        releaseGateResult: ElectricalSignoffReleaseGateResult,
-        pretty: Bool
-    ) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = pretty ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return try encoder.encode(releaseGateResult)
-    }
-
-    private static func encode(
-        processQualificationResult: ElectricalSignoffProcessQualificationResult,
-        pretty: Bool
-    ) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = pretty ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return try encoder.encode(processQualificationResult)
-    }
-
-    private static func verifyArtifactIntegrity(
-        _ observations: [ArtifactIntegrity],
-        projectRoot: URL
-    ) -> [ArtifactIntegrity] {
-        // Integrity observations are already canonical Foundation values. The
-        // request carries the references that produced them, so do not rebuild
-        // an obsolete flat artifact reference in the CLI.
-        _ = projectRoot
-        return observations
     }
 
     private static func write(_ data: Data, outputPath: String?) throws {
@@ -224,9 +127,7 @@ public struct ElectricalSignoffCLI {
 
     private static let usage = """
     electrical-signoff --request <request.json> [--extract-topology] [--axis <power-integrity|erc|esd|latch-up|aging>] [--project-root <path>] [--output <path>] [--pretty]
-    electrical-signoff --qualification-spec <spec.json> [--oracle-observations <oracle.json>] [--project-root <path>] [--output <path>] [--allow-unverified-inputs] [--pretty]
-    electrical-signoff --process-qualification-request <request.json> [--project-root <path>] [--output <path>] [--pretty]
-    electrical-signoff --release-gate-request <gate-request.json> [--project-root <path>] [--output <path>] [--pretty]
+    electrical-signoff --corpus-spec <spec.json> [--oracle-observations <oracle.json>] [--project-root <path>] [--output <path>] [--allow-unverified-inputs] [--pretty]
     """
 }
 
@@ -234,10 +135,8 @@ private struct CLIOptions: Sendable {
     var requestPath: String?
     var projectRoot: String?
     var outputPath: String?
-    var qualificationSpecPath: String?
+    var corpusSpecPath: String?
     var oracleObservationsPath: String?
-    var processQualificationRequestPath: String?
-    var releaseGateRequestPath: String?
     var axis: ElectricalSignoffAnalysisAxis
     var pretty: Bool
     var help: Bool
@@ -248,10 +147,8 @@ private struct CLIOptions: Sendable {
         requestPath = nil
         projectRoot = nil
         outputPath = nil
-        qualificationSpecPath = nil
+        corpusSpecPath = nil
         oracleObservationsPath = nil
-        processQualificationRequestPath = nil
-        releaseGateRequestPath = nil
         axis = .aggregate
         pretty = false
         help = false
@@ -272,18 +169,12 @@ private struct CLIOptions: Sendable {
             case "--request":
                 index += 1
                 requestPath = try value(after: argument, index: index, arguments: arguments)
-            case "--qualification-spec":
+            case "--corpus-spec":
                 index += 1
-                qualificationSpecPath = try value(after: argument, index: index, arguments: arguments)
+                corpusSpecPath = try value(after: argument, index: index, arguments: arguments)
             case "--oracle-observations":
                 index += 1
                 oracleObservationsPath = try value(after: argument, index: index, arguments: arguments)
-            case "--release-gate-request":
-                index += 1
-                releaseGateRequestPath = try value(after: argument, index: index, arguments: arguments)
-            case "--process-qualification-request":
-                index += 1
-                processQualificationRequestPath = try value(after: argument, index: index, arguments: arguments)
             case "--project-root":
                 index += 1
                 projectRoot = try value(after: argument, index: index, arguments: arguments)
@@ -302,18 +193,16 @@ private struct CLIOptions: Sendable {
             }
             index += 1
         }
-        if oracleObservationsPath != nil && qualificationSpecPath == nil {
-            throw CLIError.conflictingOptions("--oracle-observations requires --qualification-spec")
+        if oracleObservationsPath != nil && corpusSpecPath == nil {
+            throw CLIError.conflictingOptions("--oracle-observations requires --corpus-spec")
         }
         let selectedModes = [
             requestPath != nil,
-            qualificationSpecPath != nil,
-            processQualificationRequestPath != nil,
-            releaseGateRequestPath != nil,
+            corpusSpecPath != nil,
         ].filter { $0 }.count
         if selectedModes > 1 {
             throw CLIError.conflictingOptions(
-                "--request, --qualification-spec, --process-qualification-request and --release-gate-request are mutually exclusive"
+                "--request and --corpus-spec are mutually exclusive"
             )
         }
     }
@@ -330,7 +219,6 @@ private enum CLIError: Error, LocalizedError {
     case missingOption(String)
     case missingValue(String)
     case invalidValue(String, String)
-    case invalidArtifact(String)
     case unknownOption(String)
     case conflictingOptions(String)
 
@@ -339,7 +227,6 @@ private enum CLIError: Error, LocalizedError {
         case .missingOption: return "electrical-signoff.cli.missing-option"
         case .missingValue: return "electrical-signoff.cli.missing-value"
         case .invalidValue: return "electrical-signoff.cli.invalid-value"
-        case .invalidArtifact: return "electrical-signoff.cli.invalid-artifact"
         case .unknownOption: return "electrical-signoff.cli.unknown-option"
         case .conflictingOptions: return "electrical-signoff.cli.conflicting-options"
         }
@@ -350,7 +237,6 @@ private enum CLIError: Error, LocalizedError {
         case let .missingOption(option): return "Required option is missing: \(option)."
         case let .missingValue(option): return "Option requires a value: \(option)."
         case let .invalidValue(option, value): return "Invalid value \(value) for \(option)."
-        case let .invalidArtifact(details): return "Process qualification artifact integrity failed: \(details)."
         case let .unknownOption(option): return "Unknown option: \(option)."
         case let .conflictingOptions(message): return message
         }

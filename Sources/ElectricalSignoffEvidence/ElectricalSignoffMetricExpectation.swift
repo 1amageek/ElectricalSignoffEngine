@@ -23,14 +23,14 @@ public struct ElectricalSignoffMetricExpectation: Sendable, Hashable, Codable {
 
     public func validate() throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ElectricalSignoffQualificationError.invalidSpec("metric names are required")
+            throw ElectricalSignoffCorpusError.invalidSpec("metric names are required")
         }
         guard expectedValue.isFinite,
               absoluteTolerance.isFinite,
               absoluteTolerance >= 0,
               relativeTolerance.isFinite,
               relativeTolerance >= 0 else {
-            throw ElectricalSignoffQualificationError.invalidSpec("metric expectations must be finite and non-negative")
+            throw ElectricalSignoffCorpusError.invalidSpec("metric expectations must be finite and non-negative")
         }
     }
 

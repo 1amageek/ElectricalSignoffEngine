@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "LatchUpEngine", targets: ["LatchUpEngine"]),
         .library(name: "AgingEngine", targets: ["AgingEngine"]),
         .library(name: "ElectricalSignoffEngine", targets: ["ElectricalSignoffEngine"]),
-        .library(name: "ElectricalSignoffQualification", targets: ["ElectricalSignoffQualification"]),
+        .library(name: "ElectricalSignoffEvidence", targets: ["ElectricalSignoffEvidence"]),
         .executable(name: "electrical-signoff", targets: ["ElectricalSignoffCLI"]),
     ],
     dependencies: [
@@ -21,7 +21,6 @@ let package = Package(
         .package(path: "../PDKKit"),
         .package(path: "../PhysicalDesignEngine"),
         .package(path: "../PEXEngine"),
-        .package(path: "../ToolQualification"),
     ],
     targets: [
         .target(
@@ -69,17 +68,16 @@ let package = Package(
             ]
         ),
         .target(
-            name: "ElectricalSignoffQualification",
+            name: "ElectricalSignoffEvidence",
             dependencies: [
                 "ElectricalSignoffCore",
                 "ElectricalSignoffEngine",
-                .product(name: "ToolQualification", package: "ToolQualification"),
                 .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
             ]
         ),
         .executableTarget(
             name: "ElectricalSignoffCLI",
-            dependencies: ["ElectricalSignoffCore", "ElectricalSignoffEngine", "ElectricalSignoffQualification"]
+            dependencies: ["ElectricalSignoffCore", "ElectricalSignoffEngine", "ElectricalSignoffEvidence"]
         ),
         .testTarget(
             name: "ElectricalSignoffEngineTests",
@@ -99,16 +97,15 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "ElectricalSignoffQualificationTests",
+            name: "ElectricalSignoffEvidenceTests",
             dependencies: [
                 "ElectricalSignoffCore",
                 "ElectricalSignoffEngine",
-                "ElectricalSignoffQualification",
+                "ElectricalSignoffEvidence",
                 "ElectricalSignoffCLI",
                 .product(name: "LogicIR", package: "LogicDesign"),
                 .product(name: "PDKCore", package: "PDKKit"),
                 .product(name: "PhysicalDesignCore", package: "PhysicalDesignEngine"),
-                .product(name: "ToolQualification", package: "ToolQualification"),
                 .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
             ]
         ),

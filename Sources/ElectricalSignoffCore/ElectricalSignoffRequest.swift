@@ -165,9 +165,6 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
         guard !reference.artifactID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffError.invalidRequest("\(role) artifact ID must not be empty")
         }
-        guard reference.byteCount >= 0 else {
-            throw ElectricalSignoffError.invalidRequest("\(role) artifact byte count must not be negative")
-        }
     }
 
     private func validate(locator: ArtifactLocator, role: String) throws {
