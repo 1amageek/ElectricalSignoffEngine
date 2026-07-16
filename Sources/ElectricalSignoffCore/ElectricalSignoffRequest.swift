@@ -77,8 +77,7 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
         topologyArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .topologyArtifact)
         topologyProfileArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .topologyProfileArtifact)
         processRuleArtifact = try container.decodeIfPresent(ArtifactReference.self, forKey: .processRuleArtifact)
-        configuration = try container.decodeIfPresent(ElectricalSignoffConfiguration.self, forKey: .configuration)
-            ?? ElectricalSignoffConfiguration()
+        configuration = try container.decode(ElectricalSignoffConfiguration.self, forKey: .configuration)
     }
 
     public func validate() throws {

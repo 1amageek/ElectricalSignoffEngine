@@ -453,28 +453,31 @@ public struct ElectricalTopology: Sendable, Hashable, Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? Self.currentSchemaVersion
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        guard schemaVersion == Self.currentSchemaVersion else {
+            throw ElectricalSignoffError.schemaVersionUnsupported(schemaVersion)
+        }
         designDigest = try container.decode(String.self, forKey: .designDigest)
         pdkDigest = try container.decode(String.self, forKey: .pdkDigest)
         layoutDigest = try container.decode(String.self, forKey: .layoutDigest)
         topCell = try container.decode(String.self, forKey: .topCell)
         parasiticDigest = try container.decodeIfPresent(String.self, forKey: .parasiticDigest)
         powerIntentDigest = try container.decodeIfPresent(String.self, forKey: .powerIntentDigest)
-        nodes = try container.decodeIfPresent([Node].self, forKey: .nodes) ?? []
-        nets = try container.decodeIfPresent([Net].self, forKey: .nets) ?? []
-        devices = try container.decodeIfPresent([Device].self, forKey: .devices) ?? []
-        segments = try container.decodeIfPresent([Segment].self, forKey: .segments) ?? []
-        vias = try container.decodeIfPresent([Via].self, forKey: .vias) ?? []
-        sources = try container.decodeIfPresent([Source].self, forKey: .sources) ?? []
-        loads = try container.decodeIfPresent([Load].self, forKey: .loads) ?? []
-        activityVectors = try container.decodeIfPresent([ActivityVector].self, forKey: .activityVectors) ?? []
-        domains = try container.decodeIfPresent([Domain].self, forKey: .domains) ?? []
-        esdClamps = try container.decodeIfPresent([ESDClamp].self, forKey: .esdClamps) ?? []
-        wells = try container.decodeIfPresent([Well].self, forKey: .wells) ?? []
-        substrateContacts = try container.decodeIfPresent([SubstrateContact].self, forKey: .substrateContacts) ?? []
-        agingModels = try container.decodeIfPresent([AgingModel].self, forKey: .agingModels) ?? []
+        nodes = try container.decode([Node].self, forKey: .nodes)
+        nets = try container.decode([Net].self, forKey: .nets)
+        devices = try container.decode([Device].self, forKey: .devices)
+        segments = try container.decode([Segment].self, forKey: .segments)
+        vias = try container.decode([Via].self, forKey: .vias)
+        sources = try container.decode([Source].self, forKey: .sources)
+        loads = try container.decode([Load].self, forKey: .loads)
+        activityVectors = try container.decode([ActivityVector].self, forKey: .activityVectors)
+        domains = try container.decode([Domain].self, forKey: .domains)
+        esdClamps = try container.decode([ESDClamp].self, forKey: .esdClamps)
+        wells = try container.decode([Well].self, forKey: .wells)
+        substrateContacts = try container.decode([SubstrateContact].self, forKey: .substrateContacts)
+        agingModels = try container.decode([AgingModel].self, forKey: .agingModels)
         rules = try container.decode(RuleSet.self, forKey: .rules)
-        rulesByCorner = try container.decodeIfPresent([String: RuleSet].self, forKey: .rulesByCorner) ?? [:]
+        rulesByCorner = try container.decode([String: RuleSet].self, forKey: .rulesByCorner)
     }
 
     public func rules(for condition: ElectricalOperatingCondition) -> RuleSet {

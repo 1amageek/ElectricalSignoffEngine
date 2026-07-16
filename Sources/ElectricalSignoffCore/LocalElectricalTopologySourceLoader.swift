@@ -79,7 +79,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         }
         let pdk: PDKManifest
         do {
-            pdk = try PDKManifestCodec.decode(data: pdkData).manifest
+            pdk = try PDKManifestCodec.decode(data: pdkData)
         } catch {
             throw ElectricalSignoffError.malformedTopology("PDK manifest decode failed: \(error.localizedDescription)")
         }

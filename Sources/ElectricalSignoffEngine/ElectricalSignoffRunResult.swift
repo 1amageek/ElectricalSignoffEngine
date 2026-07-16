@@ -36,13 +36,16 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        guard schemaVersion == Self.currentSchemaVersion else {
+            throw ElectricalSignoffError.schemaVersionUnsupported(schemaVersion)
+        }
         runID = try container.decode(String.self, forKey: .runID)
         status = try container.decode(ElectricalSignoffExecutionStatus.self, forKey: .status)
         axisResults = try container.decode([ElectricalSignoffAnalysisAxis: ElectricalSignoffResult].self, forKey: .axisResults)
-        cornerResults = try container.decodeIfPresent(
+        cornerResults = try container.decode(
             [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]].self,
             forKey: .cornerResults
-        ) ?? [:]
+        )
     }
 
     public func validate() throws {

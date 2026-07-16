@@ -125,13 +125,13 @@ struct EngineTests {
         let fixture = try FixtureProject.make(clean: true)
         var request = fixture.request
         request.configuration = ElectricalSignoffConfiguration(
-            operatingCondition: ElectricalOperatingCondition(
+            operatingConditions: [ElectricalOperatingCondition(
                 id: "hot-low-voltage",
                 pdkCornerID: "slow",
                 temperatureC: 125,
                 supplyVoltageScale: 0.9,
                 activityScale: 2
-            )
+            )]
         )
         let support = ElectricalSignoffExecutionSupport(projectRoot: fixture.root)
         let result = try await DefaultPowerIntegrityEngine(support: support).execute(request)
@@ -146,13 +146,13 @@ struct EngineTests {
         let fixture = try FixtureProject.make(clean: true)
         var request = fixture.request
         request.configuration = ElectricalSignoffConfiguration(
-            operatingCondition: ElectricalOperatingCondition(
+            operatingConditions: [ElectricalOperatingCondition(
                 id: "static-only",
                 pdkCornerID: "typical",
                 temperatureC: 25,
                 supplyVoltageScale: 1,
                 activityScale: 0
-            )
+            )]
         )
         let result = try await DefaultPowerIntegrityEngine(
             support: ElectricalSignoffExecutionSupport(projectRoot: fixture.root)
@@ -282,21 +282,80 @@ struct EngineTests {
         try decoded.validate()
     }
 
-    @Test("run results decode legacy payloads without corner results", .timeLimit(.minutes(1)))
-    func runResultDecodesLegacyShape() throws {
-        let legacyJSONText = """
+    @Test("configuration rejects removed scalar operating-condition keys", .timeLimit(.minutes(1)))
+    func configurationRejectsRemovedScalarKeys() throws {
+        let removedShape = Data("""
+        {
+          "temperatureC": 125,
+          "dynamicActivityScale": 2,
+          "minimumLifetimeHours": 87600,
+          "requiredAxes": ["erc"]
+        }
+        """.utf8)
+
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(ElectricalSignoffConfiguration.self, from: removedShape)
+        }
+    }
+
+    @Test("topology requires its current schema version", .timeLimit(.minutes(1)))
+    func topologyRequiresCurrentSchemaVersion() throws {
+        let fixture = try FixtureProject.make(clean: true)
+        let topologyData = try Data(
+            contentsOf: fixture.root.appending(path: "electrical-topology.json")
+        )
+        let missingSchemaData = try removingKey("schemaVersion", from: topologyData)
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(ElectricalTopology.self, from: missingSchemaData)
+        }
+
+        let unsupportedSchemaData = try replacingValue(2, forKey: "schemaVersion", in: topologyData)
+        #expect(throws: ElectricalSignoffError.self) {
+            try JSONDecoder().decode(ElectricalTopology.self, from: unsupportedSchemaData)
+        }
+    }
+
+    @Test("request requires canonical configuration", .timeLimit(.minutes(1)))
+    func requestRequiresConfiguration() throws {
+        let fixture = try FixtureProject.make(clean: true)
+        let requestData = try JSONEncoder().encode(fixture.request)
+        let incompleteRequestData = try removingKey("configuration", from: requestData)
+
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(ElectricalSignoffRequest.self, from: incompleteRequestData)
+        }
+    }
+
+    @Test("run results reject payloads without corner results", .timeLimit(.minutes(1)))
+    func runResultRejectsMissingCornerResults() throws {
+        let incompleteJSONText = """
         {
           "schemaVersion": 1,
-          "runID": "legacy-run",
+          "runID": "incomplete-run",
           "status": "completed",
           "axisResults": []
         }
         """
-        let legacyJSON = Data(legacyJSONText.utf8)
-        let result = try JSONDecoder().decode(ElectricalSignoffRunResult.self, from: legacyJSON)
+        let incompleteJSON = Data(incompleteJSONText.utf8)
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(ElectricalSignoffRunResult.self, from: incompleteJSON)
+        }
 
-        #expect(result.runID == "legacy-run")
-        #expect(result.cornerResults.isEmpty)
+        let unsupportedJSONText = """
+        {
+          "schemaVersion": 2,
+          "runID": "unsupported-run",
+          "status": "completed",
+          "axisResults": [],
+          "cornerResults": {}
+        }
+        """
+        #expect(throws: ElectricalSignoffError.self) {
+            try JSONDecoder().decode(
+                ElectricalSignoffRunResult.self,
+                from: Data(unsupportedJSONText.utf8)
+            )
+        }
     }
 
     @Test("power integrity computes extracted static and dynamic drop", .timeLimit(.minutes(1)))
@@ -359,6 +418,22 @@ struct EngineTests {
         let payloadData = try encoder.encode(payload)
         let decodedPayload = try JSONDecoder().decode(ElectricalSignoffPayload.self, from: payloadData)
         #expect(decodedPayload == payload)
+    }
+
+    private func removingKey(_ key: String, from data: Data) throws -> Data {
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        object.removeValue(forKey: key)
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func replacingValue(_ value: Any, forKey key: String, in data: Data) throws -> Data {
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        object[key] = value
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
     }
 }
 
