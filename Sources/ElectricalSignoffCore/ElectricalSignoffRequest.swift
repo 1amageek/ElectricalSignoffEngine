@@ -173,7 +173,7 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
         _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
+        if lhs.digest != rhs.digest {
             return false
         }
         if lhs.byteCount != rhs.byteCount {

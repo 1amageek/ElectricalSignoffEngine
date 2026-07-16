@@ -288,7 +288,7 @@ public struct NativeElectricalTopologyExtractor: ElectricalTopologyExtracting {
         let domains = try makeDomains(profile: profile, powerIntent: sources.powerIntent)
         let powerIntentDigest: String?
         if let powerIntent = sources.request.powerIntent {
-            powerIntentDigest = powerIntent.artifact.sha256
+            powerIntentDigest = powerIntent.artifact.digest.hexadecimalValue
         } else {
             powerIntentDigest = nil
         }
@@ -309,7 +309,7 @@ public struct NativeElectricalTopologyExtractor: ElectricalTopologyExtracting {
             pdkDigest: sources.request.pdk.digest,
             layoutDigest: sources.request.physicalDesign.layoutDigest,
             topCell: sources.request.physicalDesign.topCell,
-            parasiticDigest: sources.request.parasitics?.sha256,
+            parasiticDigest: sources.request.parasitics?.digest.hexadecimalValue,
             nodes: nodeBuilder.nodes.values.sorted { $0.id < $1.id },
             nets: nets,
             devices: devices.sorted { $0.id < $1.id },

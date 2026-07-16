@@ -104,7 +104,7 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
         _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
+        if lhs.digest != rhs.digest {
             return false
         }
         if lhs.byteCount != rhs.byteCount {
@@ -191,17 +191,20 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             guard let reference = request.parasitics else {
                 throw ElectricalSignoffError.missingParasitics
             }
-            guard reference.sha256.caseInsensitiveCompare(parasiticDigest) == .orderedSame else {
+            guard reference.digest.algorithm == .sha256,
+                  reference.digest.hexadecimalValue.caseInsensitiveCompare(
+                    parasiticDigest
+                  ) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "parasitic",
                     expected: parasiticDigest,
-                    actual: reference.sha256
+                    actual: reference.digest.hexadecimalValue
                 )
             }
         } else if request.parasitics != nil {
             throw ElectricalSignoffError.digestMismatch(
                 kind: "parasitic",
-                expected: request.parasitics?.sha256 ?? "required",
+                expected: request.parasitics?.digest.hexadecimalValue ?? "required",
                 actual: "missing-from-topology"
             )
         }
@@ -217,15 +220,18 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             guard let topologyPowerIntentDigest = topology.powerIntentDigest else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent",
-                    expected: powerIntentReference.sha256,
+                    expected: powerIntentReference.digest.hexadecimalValue,
                     actual: "missing-from-topology"
                 )
             }
-            guard topologyPowerIntentDigest.caseInsensitiveCompare(powerIntentReference.sha256) == .orderedSame else {
+            guard powerIntentReference.digest.algorithm == .sha256,
+                  topologyPowerIntentDigest.caseInsensitiveCompare(
+                    powerIntentReference.digest.hexadecimalValue
+                  ) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent",
                     expected: topologyPowerIntentDigest,
-                    actual: powerIntentReference.sha256
+                    actual: powerIntentReference.digest.hexadecimalValue
                 )
             }
         } else if topology.powerIntentDigest != nil {

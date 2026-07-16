@@ -280,7 +280,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
             throw ElectricalSignoffError.digestMismatch(
                 kind: "PDK",
                 expected: request.pdk.digest,
-                actual: request.pdk.manifest.sha256
+                actual: request.pdk.manifest.digest.hexadecimalValue
             )
         }
         guard profile.schemaVersion == ElectricalTopologyExtractionProfile.currentSchemaVersion else {
@@ -329,7 +329,10 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
     }
 
     private func pdkIdentityMatches(request: ElectricalSignoffRequest, pdk: PDKManifest) -> Bool {
-        request.pdk.manifest.sha256.caseInsensitiveCompare(request.pdk.digest) == .orderedSame
+        request.pdk.manifest.digest.algorithm == .sha256
+            && request.pdk.manifest.digest.hexadecimalValue.caseInsensitiveCompare(
+                request.pdk.digest
+            ) == .orderedSame
             && pdk.processID == request.pdk.processID
             && pdk.version == request.pdk.version
     }
@@ -395,7 +398,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         _ rhs: ArtifactReference
     ) -> Bool {
         guard lhs.format == rhs.format else { return false }
-        if lhs.sha256.caseInsensitiveCompare(rhs.sha256) != .orderedSame {
+        if lhs.digest != rhs.digest {
             return false
         }
         if lhs.byteCount != rhs.byteCount {
