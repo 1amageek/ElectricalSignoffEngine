@@ -111,6 +111,18 @@ does not depend on Xcircuite; Xcircuite composes it through the published protoc
 
 ## Build and test
 
+`Package.swift` resolves each dependency independently. A local sibling is used
+when its `Package.swift` exists; otherwise SwiftPM uses the pinned GitHub
+revision. Xcircuite or another umbrella checkout is not required.
+
+| Dependency | Local sibling | Remote fallback revision |
+|---|---|---|
+| CircuiteFoundation | `../CircuiteFoundation` | `2ec6ee13a89ac6885be3c26b41a9ee0ef89948ac` |
+| LogicDesign | `../LogicDesign` | `8e0c8c2c63152aa45bf12d943fa034bb1aba0f1e` |
+| PDKKit | `../PDKKit` | `aa145dfaa67454c44ac7767c37a28ab7f4b1d2e2` |
+| PhysicalDesignEngine | `../PhysicalDesignEngine` | `2a3f4215319b8515120f19a5bcb5627122663ff3` |
+| PEXEngine | `../PEXEngine` | `2405356655e625c1bab6f20814f92af61c0caf2f` |
+
 ```bash
 xcodebuild -scheme ElectricalSignoffEngine-Package -destination 'platform=macOS' build
 xcodebuild -scheme ElectricalSignoffEngine-Package -destination 'platform=macOS' test

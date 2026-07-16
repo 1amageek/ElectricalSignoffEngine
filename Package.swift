@@ -1,5 +1,40 @@
 // swift-tools-version: 6.3
 import PackageDescription
+import Foundation
+
+let workspaceRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+
+let circuiteFoundationDependency: Package.Dependency = FileManager.default.fileExists(
+    atPath: workspaceRoot.appendingPathComponent("CircuiteFoundation/Package.swift").path
+)
+    ? .package(path: "../CircuiteFoundation")
+    : .package(url: "https://github.com/1amageek/CircuiteFoundation.git", revision: "2ec6ee13a89ac6885be3c26b41a9ee0ef89948ac")
+
+let logicDesignDependency: Package.Dependency = FileManager.default.fileExists(
+    atPath: workspaceRoot.appendingPathComponent("LogicDesign/Package.swift").path
+)
+    ? .package(path: "../LogicDesign")
+    : .package(url: "https://github.com/1amageek/LogicDesign.git", revision: "8e0c8c2c63152aa45bf12d943fa034bb1aba0f1e")
+
+let pdkKitDependency: Package.Dependency = FileManager.default.fileExists(
+    atPath: workspaceRoot.appendingPathComponent("PDKKit/Package.swift").path
+)
+    ? .package(path: "../PDKKit")
+    : .package(url: "https://github.com/1amageek/PDKKit.git", revision: "aa145dfaa67454c44ac7767c37a28ab7f4b1d2e2")
+
+let physicalDesignEngineDependency: Package.Dependency = FileManager.default.fileExists(
+    atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
+)
+    ? .package(path: "../PhysicalDesignEngine")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "2a3f4215319b8515120f19a5bcb5627122663ff3")
+
+let pexEngineDependency: Package.Dependency = FileManager.default.fileExists(
+    atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
+)
+    ? .package(path: "../PEXEngine")
+    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "2405356655e625c1bab6f20814f92af61c0caf2f")
 
 let package = Package(
     name: "ElectricalSignoffEngine",
@@ -16,11 +51,11 @@ let package = Package(
         .executable(name: "electrical-signoff", targets: ["ElectricalSignoffCLI"]),
     ],
     dependencies: [
-        .package(path: "../CircuiteFoundation"),
-        .package(path: "../LogicDesign"),
-        .package(path: "../PDKKit"),
-        .package(path: "../PhysicalDesignEngine"),
-        .package(path: "../PEXEngine"),
+        circuiteFoundationDependency,
+        logicDesignDependency,
+        pdkKitDependency,
+        physicalDesignEngineDependency,
+        pexEngineDependency,
     ],
     targets: [
         .target(
