@@ -16,25 +16,25 @@ let logicDesignDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("LogicDesign/Package.swift").path
 )
     ? .package(path: "../LogicDesign")
-    : .package(url: "https://github.com/1amageek/LogicDesign.git", revision: "8e0c8c2c63152aa45bf12d943fa034bb1aba0f1e")
+    : .package(url: "https://github.com/1amageek/LogicDesign.git", revision: "cc39c974bf14624e6ce29fd8722620385fde0762")
 
 let pdkKitDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PDKKit/Package.swift").path
 )
     ? .package(path: "../PDKKit")
-    : .package(url: "https://github.com/1amageek/PDKKit.git", revision: "aa145dfaa67454c44ac7767c37a28ab7f4b1d2e2")
+    : .package(url: "https://github.com/1amageek/PDKKit.git", revision: "29cc9f6f8d24562a7dcb5fd43d8dc6437e695c21")
 
 let physicalDesignEngineDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
 )
     ? .package(path: "../PhysicalDesignEngine")
-    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "2a3f4215319b8515120f19a5bcb5627122663ff3")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "35e200fa4b7116747b1dc592e550fc77f1ccd850")
 
 let pexEngineDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
 )
     ? .package(path: "../PEXEngine")
-    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "2405356655e625c1bab6f20814f92af61c0caf2f")
+    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "2c909abe23ef8c697d29b584b4733d11869407ec")
 
 let package = Package(
     name: "ElectricalSignoffEngine",
