@@ -31,7 +31,8 @@ struct EngineTests {
             #expect(axisResult.payload.violationCount == 0)
             #expect(axisResult.payload.provenance?.designDigest == fixture.request.design.designDigest)
             #expect(axisResult.artifacts.count == 1)
-            #expect(axisResult.artifacts[0].sha256.count == 64)
+            #expect(axisResult.artifacts[0].digest.algorithm == .sha256)
+            #expect(axisResult.artifacts[0].digest.hexadecimalValue.count == 64)
         }
     }
 
@@ -523,7 +524,7 @@ private struct FixtureProject: Sendable {
         let parasiticReference = try write(data: Data("* fixture SPEF\n".utf8), path: "parasitics.spef", kind: .parasitics, format: .spef, root: root, artifactID: "parasitics")
 
         var topologyWithDigest = topology
-        topologyWithDigest.parasiticDigest = parasiticReference.sha256
+        topologyWithDigest.parasiticDigest = parasiticReference.digest.hexadecimalValue
         let updatedTopologyData = try JSONEncoder().encode(topologyWithDigest)
         topologyReference = try write(data: updatedTopologyData, path: "electrical-topology.json", kind: .other, format: .json, root: root, artifactID: "electrical-topology")
 

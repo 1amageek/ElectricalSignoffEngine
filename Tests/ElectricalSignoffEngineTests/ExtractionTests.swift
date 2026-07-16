@@ -64,7 +64,7 @@ struct ExtractionTests {
             artifactID: "pdk"
         )
         let processRules = ElectricalProcessRuleSet(
-            pdkDigest: pdkReference.sha256,
+            pdkDigest: pdkReference.digest.hexadecimalValue,
             processID: "fixture",
             pdkVersion: "1",
             cornerRules: fixture.sources.processRules?.cornerRules ?? []
@@ -127,7 +127,7 @@ struct ExtractionTests {
                 manifest: pdkReference,
                 processID: "fixture",
                 version: "1",
-                digest: pdkReference.sha256
+                digest: pdkReference.digest.hexadecimalValue
             ),
             powerIntent: PowerIntentReference(
                 artifact: powerIntentReference,
@@ -143,8 +143,8 @@ struct ExtractionTests {
         #expect(topology.designDigest == request.design.designDigest)
         #expect(topology.segments.count == 2)
         #expect(loaded.sourceReferences.count == 7)
-        #expect(topology.parasiticDigest == parasiticReference.sha256)
-        #expect(topology.powerIntentDigest == powerIntentReference.sha256)
+        #expect(topology.parasiticDigest == parasiticReference.digest.hexadecimalValue)
+        #expect(topology.powerIntentDigest == powerIntentReference.digest.hexadecimalValue)
 
         let spef = """
         *SPEF \"IEEE 1481-1998\"
