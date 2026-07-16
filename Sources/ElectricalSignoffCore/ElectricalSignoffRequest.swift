@@ -127,7 +127,7 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
             )
         }
         var referencesByPath: [String: ArtifactReference] = [:]
-        for reference in allReferences {
+        for reference in referencedArtifacts {
             if let existing = referencesByPath[reference.path], !compatibleArtifactReferences(existing, reference) {
                 throw ElectricalSignoffError.conflictingArtifactReferences(path: reference.path)
             }
@@ -136,7 +136,7 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
         try configuration.validate()
     }
 
-    private var allReferences: [ArtifactReference] {
+    public var referencedArtifacts: [ArtifactReference] {
         var references = inputs
         references.append(design.artifact)
         references.append(physicalDesign.layoutArtifact)
@@ -157,6 +157,16 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
             references.append(processRuleArtifact)
         }
         return references
+    }
+
+    public var executionInputArtifacts: [ArtifactReference] {
+        var referencesByPath: [String: ArtifactReference] = [:]
+        for reference in referencedArtifacts {
+            if referencesByPath[reference.path] == nil {
+                referencesByPath[reference.path] = reference
+            }
+        }
+        return referencesByPath.values.sorted { $0.path < $1.path }
     }
 
     private func validate(reference: ArtifactReference, role: String) throws {

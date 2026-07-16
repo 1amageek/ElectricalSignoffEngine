@@ -113,7 +113,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
                 version: String(ElectricalSignoffEngineAPI.contractVersion)
             ),
             supportingTools: childProvenance.map(\.producer),
-            inputs: request.inputs,
+            inputs: request.executionInputArtifacts,
             invocation: ExecutionInvocation.inProcess(
                 entryPoint: "ElectricalSignoffEngine.execute"
             ),

@@ -25,6 +25,7 @@ struct EngineTests {
 
         #expect(result.status == .completed)
         #expect(Set(result.axisResults.keys) == Set(ElectricalSignoffEngineAPI.supportedAxes))
+        #expect(result.provenance.inputs == fixture.request.executionInputArtifacts)
         for axis in ElectricalSignoffEngineAPI.supportedAxes {
             let axisResult = try #require(result.axisResults[axis])
             #expect(axisResult.status == .completed)
