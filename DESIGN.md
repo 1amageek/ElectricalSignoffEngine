@@ -40,7 +40,16 @@ Kernel availability, corpus validation, oracle correlation, process-scoped quali
 
 All outputs are immutable run artifacts with format, digest, producer metadata and the input design/PDK revision needed to reproduce the result.
 
-`LocalElectricalArtifactStore` writes report JSON under `.xcircuite/runs/<run-id>/electrical-signoff/`; `InMemoryElectricalArtifactStore` is available for unit tests and injected protocol implementations. Neither store changes the design or layout.
+`LocalElectricalArtifactStore` receives an artifact root and
+`ElectricalArtifactNamespace`. It validates every namespace, run, axis, and
+artifact path segments, rejects traversal and symbolic-link escapes, and
+creates each report path once using a completed temporary file and an atomic
+hard-link create. The root is revalidated before and after directory creation
+so a late symbolic-link or non-directory replacement is rejected. Identical repeated content is a typed duplicate
+error; different content at the same path is a typed conflict.
+`InMemoryElectricalArtifactStore` enforces the same immutability contract.
+Neither store owns `.xcircuite`, run lifecycle, approval, resume, design, or
+layout state.
 
 ## Qualification boundary
 

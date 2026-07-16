@@ -30,7 +30,12 @@ public struct ElectricalSignoffCLI {
                 let support = ElectricalSignoffExecutionSupport(
                     projectRoot: projectRoot,
                     verifyIntegrity: !options.allowUnverifiedInputs,
-                    artifactStore: LocalElectricalArtifactStore(projectRoot: projectRoot)
+                    artifactStore: try LocalElectricalArtifactStore(
+                        artifactRoot: projectRoot,
+                        namespace: ElectricalArtifactNamespace(
+                            validating: "artifacts/electrical-signoff"
+                        )
+                    )
                 )
                 let oracle = try options.oracleObservationsPath.map {
                     try LocalElectricalSignoffOracle(contentsOf: URL(filePath: $0).standardizedFileURL)
@@ -61,7 +66,12 @@ public struct ElectricalSignoffCLI {
             let support = ElectricalSignoffExecutionSupport(
                 projectRoot: projectRoot,
                 verifyIntegrity: !options.allowUnverifiedInputs,
-                artifactStore: LocalElectricalArtifactStore(projectRoot: projectRoot)
+                artifactStore: try LocalElectricalArtifactStore(
+                    artifactRoot: projectRoot,
+                    namespace: ElectricalArtifactNamespace(
+                        validating: "artifacts/electrical-signoff"
+                    )
+                )
             )
             let engine = ElectricalSignoffEngine(support: support)
             let axes = options.axis == .aggregate ? request.configuration.requiredAxes : [options.axis]

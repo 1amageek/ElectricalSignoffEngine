@@ -42,6 +42,11 @@ independent-oracle observations. `DesignFlowKernel` owns run lifecycle,
 approval, resume, retry, and cancellation. `ReleaseEngine` owns final release
 authorization.
 
+Artifact stores receive an explicit artifact root and typed namespace. They
+validate run, axis, and artifact path segments, reject symbolic-link escapes,
+and enforce immutable creation. This package never chooses a `.xcircuite`
+directory or owns a run ledger.
+
 ## CircuiteFoundation boundary
 
 `ElectricalSignoffExecuting` refines
@@ -92,8 +97,10 @@ swift run electrical-signoff \
 
 The CLI returns `0` for a completed passing analysis or matching corpus, `2`
 for completed analysis with violations or blocked observations, and `1` for
-invalid input or execution failure. `--allow-unverified-inputs` is limited to
-local exploration.
+invalid input or execution failure. Reports are written under
+`<project-root>/artifacts/electrical-signoff/<run-id>/`. Library consumers
+inject the artifact root and namespace appropriate to their runtime.
+`--allow-unverified-inputs` is limited to local exploration.
 
 ## Xcircuite integration
 

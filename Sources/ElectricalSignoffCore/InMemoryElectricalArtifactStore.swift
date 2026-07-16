@@ -1,12 +1,13 @@
 import CircuiteFoundation
-import CryptoKit
 import Foundation
 
 public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
     private var values: [String: Data] = [:]
-    private let digester = SHA256ContentDigester()
+    public let namespace: ElectricalArtifactNamespace
 
-    public init() {}
+    public init(namespace: ElectricalArtifactNamespace = .electricalSignoff) {
+        self.namespace = namespace
+    }
 
     public func store(
         data: Data,
@@ -14,44 +15,33 @@ public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
         runID: String,
         axis: ElectricalSignoffAnalysisAxis
     ) async throws -> ArtifactReference {
-        let key = "\(runID)/\(artifactID)"
-        values[key] = data
-        let digest = try digester.digest(data: data, using: .sha256)
-        let location = try ArtifactLocation(
-            workspaceRelativePath: "memory/\(runID)/\(safePathComponent(artifactID)).json"
-        )
-        let locator = ArtifactLocator(
-            location: location,
-            role: .output,
-            kind: .report,
-            format: .json
-        )
+        let runSegment = try ElectricalArtifactPathSegment(validating: runID)
+        let axisSegment = try ElectricalArtifactPathSegment(validating: axis.rawValue)
+        let artifactSegment = try ElectricalArtifactPathSegment(validating: artifactID)
+        let path = "\(namespace.relativePath)/\(runSegment.rawValue)/\(axisSegment.rawValue)/\(artifactSegment.rawValue).json"
+        if let existingData = values[path] {
+            throw existingData == data
+                ? ElectricalArtifactStoreError.duplicateArtifact(path)
+                : ElectricalArtifactStoreError.conflictingArtifact(path)
+        }
+        values[path] = data
         return ArtifactReference(
-            locator: locator,
-            digest: digest,
+            id: try ArtifactID(rawValue: artifactID),
+            locator: ArtifactLocator(
+                location: try ArtifactLocation(workspaceRelativePath: path),
+                role: .output,
+                kind: .report,
+                format: .json
+            ),
+            digest: try SHA256ContentDigester().digest(data: data),
             byteCount: UInt64(data.count)
         )
     }
 
-    public func data(artifactID: String, runID: String) -> Data? {
-        values["\(runID)/\(artifactID)"]
-    }
-
-    private func safePathComponent(_ value: String) -> String {
-        let scalars = value.unicodeScalars.map { scalar in
-            CharacterSet.alphanumerics.contains(scalar) || scalar == "-" || scalar == "_" ? Character(scalar) : "-"
-        }
-        let result = String(scalars)
-        guard !result.isEmpty else {
-            return "artifact-\(identifierDigest(value))"
-        }
-        guard result == value else {
-            return "\(result)-\(identifierDigest(value))"
-        }
-        return result
-    }
-
-    private func identifierDigest(_ value: String) -> String {
-        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined().prefix(12).description
+    public func data(artifactID: String, runID: String, axis: ElectricalSignoffAnalysisAxis) throws -> Data? {
+        let runSegment = try ElectricalArtifactPathSegment(validating: runID)
+        let axisSegment = try ElectricalArtifactPathSegment(validating: axis.rawValue)
+        let artifactSegment = try ElectricalArtifactPathSegment(validating: artifactID)
+        return values["\(namespace.relativePath)/\(runSegment.rawValue)/\(axisSegment.rawValue)/\(artifactSegment.rawValue).json"]
     }
 }

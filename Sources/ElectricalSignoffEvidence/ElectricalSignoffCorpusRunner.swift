@@ -71,7 +71,9 @@ public struct ElectricalSignoffCorpusRunner: Sendable {
         var failureCodes: [String] = []
 
         do {
-            let runResult = try await engine.execute(testCase.request, axes: [testCase.axis])
+            var executionRequest = testCase.request
+            executionRequest.runID = testCase.request.runID + "-" + testCase.caseID
+            let runResult = try await engine.execute(executionRequest, axes: [testCase.axis])
             guard let envelope = runResult.axisResults[testCase.axis] else {
                 throw ElectricalSignoffCorpusError.missingAxisResult(testCase.axis.rawValue)
             }

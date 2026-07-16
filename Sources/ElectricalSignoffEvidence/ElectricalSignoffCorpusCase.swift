@@ -30,8 +30,15 @@ public struct ElectricalSignoffCorpusCase: Sendable, Hashable, Codable {
     }
 
     public func validate(pdkDigest: String) throws {
-        guard !caseID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ElectricalSignoffCorpusError.invalidSpec("case IDs are required")
+        do {
+            _ = try ElectricalArtifactPathSegment(validating: caseID)
+            _ = try ElectricalArtifactPathSegment(
+                validating: request.runID + "-" + caseID
+            )
+        } catch {
+            throw ElectricalSignoffCorpusError.invalidSpec(
+                "case IDs and derived execution run IDs must be path-safe components"
+            )
         }
         guard axis != .aggregate else {
             throw ElectricalSignoffCorpusError.invalidSpec("aggregate is not a corpus axis")

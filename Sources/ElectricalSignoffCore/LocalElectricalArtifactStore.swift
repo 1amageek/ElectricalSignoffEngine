@@ -1,14 +1,25 @@
 import CircuiteFoundation
-import CryptoKit
 import Foundation
 
 public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
-    public let projectRoot: URL
-    public let outputDirectory: String
+    public let artifactRoot: URL
+    public let namespace: ElectricalArtifactNamespace
 
-    public init(projectRoot: URL, outputDirectory: String = ".xcircuite/runs") {
-        self.projectRoot = projectRoot.standardizedFileURL
-        self.outputDirectory = outputDirectory
+    public init(
+        artifactRoot: URL,
+        namespace: ElectricalArtifactNamespace
+    ) throws {
+        let standardizedRoot = artifactRoot.standardizedFileURL
+        if FileManager.default.fileExists(atPath: standardizedRoot.path(percentEncoded: false)) {
+            let values = try standardizedRoot.resourceValues(forKeys: [.isSymbolicLinkKey])
+            guard values.isSymbolicLink != true else {
+                throw ElectricalArtifactStoreError.rootIsSymbolicLink(
+                    standardizedRoot.path(percentEncoded: false)
+                )
+            }
+        }
+        self.artifactRoot = standardizedRoot.resolvingSymlinksInPath()
+        self.namespace = namespace
     }
 
     public func store(
@@ -17,54 +28,177 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
         runID: String,
         axis: ElectricalSignoffAnalysisAxis
     ) async throws -> ArtifactReference {
-        let relativeDirectory = "\(outputDirectory)/\(runID)/electrical-signoff"
-        let relativePath = "\(relativeDirectory)/\(safeFileName(artifactID)).json"
-        let directoryLocation = try ArtifactLocation(workspaceRelativePath: relativeDirectory)
-        let fileLocation = try ArtifactLocation(workspaceRelativePath: relativePath)
-        let directoryURL = try directoryLocation.resolvedFileURL(relativeTo: projectRoot)
-        let fileURL = try fileLocation.resolvedFileURL(relativeTo: projectRoot)
+        try prepareArtifactRoot()
+        let runSegment = try ElectricalArtifactPathSegment(validating: runID)
+        let axisSegment = try ElectricalArtifactPathSegment(validating: axis.rawValue)
+        let artifactSegment = try ElectricalArtifactPathSegment(validating: artifactID)
+        let relativePath = "\(namespace.relativePath)/\(runSegment.rawValue)/\(axisSegment.rawValue)/\(artifactSegment.rawValue).json"
+        let fileURL = artifactRoot.appending(path: relativePath).standardizedFileURL
+        try validateContainment(fileURL)
+        try rejectSymbolicLinks(through: fileURL)
+
+        let directoryURL = fileURL.deletingLastPathComponent()
         do {
+            try validateArtifactRoot()
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-            try data.write(to: fileURL, options: [.atomic])
+            try validateArtifactRoot()
+            try rejectSymbolicLinks(through: directoryURL)
+            if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
+                let collision = try collisionError(
+                    at: fileURL,
+                    proposedData: data,
+                    relativePath: relativePath
+                )
+                throw collision
+            }
+            try writeImmutable(data, to: fileURL, relativePath: relativePath)
+        } catch let error as ElectricalArtifactStoreError {
+            throw error
         } catch {
-            throw ElectricalSignoffError.artifactPersistence(error.localizedDescription)
+            if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
+                let collision = try collisionError(
+                    at: fileURL,
+                    proposedData: data,
+                    relativePath: relativePath
+                )
+                throw collision
+            }
+            throw ElectricalArtifactStoreError.persistenceFailed(
+                path: relativePath,
+                reason: error.localizedDescription
+            )
         }
-        do {
-            let location = try ArtifactLocation(workspaceRelativePath: relativePath)
-            let locator = ArtifactLocator(
-                location: location,
+
+        return ArtifactReference(
+            id: try ArtifactID(rawValue: artifactID),
+            locator: ArtifactLocator(
+                location: try ArtifactLocation(workspaceRelativePath: relativePath),
                 role: .output,
                 kind: .report,
                 format: .json
+            ),
+            digest: try SHA256ContentDigester().digest(data: data),
+            byteCount: UInt64(data.count)
+        )
+    }
+
+    private func prepareArtifactRoot() throws {
+        let rootPath = artifactRoot.path(percentEncoded: false)
+        if !FileManager.default.fileExists(atPath: rootPath) {
+            try FileManager.default.createDirectory(
+                at: artifactRoot,
+                withIntermediateDirectories: true
             )
-            let foundationReference = try LocalArtifactReferencer().reference(
-                locator,
-                relativeTo: projectRoot,
-                producer: nil
-            )
-            return foundationReference
+        }
+        try validateArtifactRoot()
+    }
+
+    private func validateArtifactRoot() throws {
+        let rootPath = artifactRoot.path(percentEncoded: false)
+        let values = try artifactRoot.resourceValues(
+            forKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+        )
+        guard values.isSymbolicLink != true else {
+            throw ElectricalArtifactStoreError.rootIsSymbolicLink(rootPath)
+        }
+        guard values.isDirectory == true else {
+            throw ElectricalArtifactStoreError.rootIsNotDirectory(rootPath)
+        }
+    }
+
+    private func validateContainment(_ url: URL) throws {
+        let rootPath = artifactRoot.path(percentEncoded: false)
+        let candidatePath = url.path(percentEncoded: false)
+        let rootPrefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard candidatePath.hasPrefix(rootPrefix) else {
+            throw ElectricalArtifactStoreError.pathEscapesRoot(candidatePath)
+        }
+    }
+
+    private func rejectSymbolicLinks(through url: URL) throws {
+        var candidate = artifactRoot
+        let rootComponents = artifactRoot.pathComponents
+        let candidateComponents = url.pathComponents
+        guard candidateComponents.starts(with: rootComponents) else {
+            throw ElectricalArtifactStoreError.pathEscapesRoot(url.path(percentEncoded: false))
+        }
+        for component in candidateComponents.dropFirst(rootComponents.count) {
+            candidate.append(path: component)
+            guard FileManager.default.fileExists(atPath: candidate.path(percentEncoded: false)) else {
+                continue
+            }
+            let values = try candidate.resourceValues(forKeys: [.isSymbolicLinkKey])
+            if values.isSymbolicLink == true {
+                throw ElectricalArtifactStoreError.symbolicLinkInPath(
+                    candidate.path(percentEncoded: false)
+                )
+            }
+        }
+    }
+
+    private func collisionError(
+        at url: URL,
+        proposedData: Data,
+        relativePath: String
+    ) throws -> ElectricalArtifactStoreError {
+        let existingData: Data
+        do {
+            existingData = try Data(contentsOf: url)
         } catch {
-            throw ElectricalSignoffError.artifactPersistence(
-                "artifact integrity capture failed: \(error.localizedDescription)"
+            throw ElectricalArtifactStoreError.persistenceFailed(
+                path: relativePath,
+                reason: error.localizedDescription
             )
         }
+        return existingData == proposedData
+            ? .duplicateArtifact(relativePath)
+            : .conflictingArtifact(relativePath)
     }
 
-    private func safeFileName(_ value: String) -> String {
-        let scalars = value.unicodeScalars.map { scalar in
-            CharacterSet.alphanumerics.contains(scalar) || scalar == "-" || scalar == "_" ? Character(scalar) : "-"
+    private func writeImmutable(
+        _ data: Data,
+        to destinationURL: URL,
+        relativePath: String
+    ) throws {
+        let temporaryURL = destinationURL.deletingLastPathComponent().appending(
+            path: ".\(destinationURL.lastPathComponent).\(UUID().uuidString).tmp"
+        )
+        do {
+            try data.write(to: temporaryURL, options: .atomic)
+            try validateArtifactRoot()
+            try rejectSymbolicLinks(through: destinationURL.deletingLastPathComponent())
+            try FileManager.default.linkItem(at: temporaryURL, to: destinationURL)
+        } catch {
+            let originalError = error
+            if FileManager.default.fileExists(atPath: temporaryURL.path(percentEncoded: false)) {
+                do {
+                    try FileManager.default.removeItem(at: temporaryURL)
+                } catch {
+                    throw ElectricalArtifactStoreError.persistenceFailed(
+                        path: relativePath,
+                        reason: "Temporary artifact cleanup failed: \(error.localizedDescription)"
+                    )
+                }
+            }
+            if FileManager.default.fileExists(atPath: destinationURL.path(percentEncoded: false)) {
+                throw try collisionError(
+                    at: destinationURL,
+                    proposedData: data,
+                    relativePath: relativePath
+                )
+            }
+            throw ElectricalArtifactStoreError.persistenceFailed(
+                path: relativePath,
+                reason: originalError.localizedDescription
+            )
         }
-        let result = String(scalars)
-        guard !result.isEmpty else {
-            return "artifact-\(identifierDigest(value))"
+        do {
+            try FileManager.default.removeItem(at: temporaryURL)
+        } catch {
+            throw ElectricalArtifactStoreError.persistenceFailed(
+                path: relativePath,
+                reason: "Temporary artifact cleanup failed: \(error.localizedDescription)"
+            )
         }
-        guard result == value else {
-            return "\(result)-\(identifierDigest(value))"
-        }
-        return result
-    }
-
-    private func identifierDigest(_ value: String) -> String {
-        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined().prefix(12).description
     }
 }
