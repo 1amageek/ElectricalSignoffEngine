@@ -89,16 +89,14 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
                 "runID must be a non-empty path-safe component"
             )
         }
-        try validate(locator: design.artifact, role: "design")
+        try validate(reference: design.artifact, role: "design")
         try validate(reference: physicalDesign.layoutArtifact, role: "physical-design")
         try validate(reference: pdk.manifest, role: "pdk")
-        _ = try materializedArtifact(for: design.artifact, role: "design")
         for reference in inputs {
             try validate(reference: reference, role: "input")
         }
         if let powerIntent {
-            try validate(locator: powerIntent.artifact, role: "power-intent")
-            _ = try materializedArtifact(for: powerIntent.artifact, role: "power-intent")
+            try validate(reference: powerIntent.artifact, role: "power-intent")
             guard powerIntent.designDigest == design.designDigest else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent design",
@@ -140,10 +138,14 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
 
     private var allReferences: [ArtifactReference] {
         var references = inputs
+        references.append(design.artifact)
         references.append(physicalDesign.layoutArtifact)
         references.append(pdk.manifest)
         if let parasitics {
             references.append(parasitics)
+        }
+        if let powerIntent {
+            references.append(powerIntent.artifact)
         }
         if let topologyArtifact {
             references.append(topologyArtifact)
@@ -164,47 +166,6 @@ public struct ElectricalSignoffRequest: Sendable, Hashable, Codable {
         guard !reference.artifactID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ElectricalSignoffError.invalidRequest("\(role) artifact ID must not be empty")
         }
-    }
-
-    private func validate(locator: ArtifactLocator, role: String) throws {
-        let path = locator.location.value
-        guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ElectricalSignoffError.invalidRequest("\(role) artifact path is required")
-        }
-    }
-
-    /// Resolves a locator to the digest-bearing artifact supplied by the
-    /// caller. Design and power-intent references intentionally contain only
-    /// locators; their immutable identity is carried in `inputs`.
-    public func materializedArtifact(
-        for locator: ArtifactLocator,
-        role: String = "input"
-    ) throws -> ArtifactReference {
-        if let reference = materializedReferences.first(where: { $0.locator == locator }) {
-            return reference
-        }
-        throw ElectricalSignoffError.invalidRequest(
-            "\(role) artifact locator must have a matching digest-bearing input artifact"
-        )
-    }
-
-    private var materializedReferences: [ArtifactReference] {
-        var references = inputs
-        references.append(physicalDesign.layoutArtifact)
-        references.append(pdk.manifest)
-        if let parasitics {
-            references.append(parasitics)
-        }
-        if let topologyArtifact {
-            references.append(topologyArtifact)
-        }
-        if let topologyProfileArtifact {
-            references.append(topologyProfileArtifact)
-        }
-        if let processRuleArtifact {
-            references.append(processRuleArtifact)
-        }
-        return references
     }
 
     private func compatibleArtifactReferences(

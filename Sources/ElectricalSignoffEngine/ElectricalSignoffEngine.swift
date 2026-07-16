@@ -92,10 +92,34 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
             runID: request.runID,
             status: aggregateStatus(statuses),
             axisResults: results,
-            cornerResults: cornerResults
+            cornerResults: cornerResults,
+            provenance: try makeRunProvenance(request: request, results: cornerResults)
         )
         try result.validate()
         return result
+    }
+
+    private func makeRunProvenance(
+        request: ElectricalSignoffRequest,
+        results: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]]
+    ) throws -> ExecutionProvenance {
+        let childProvenance = results.values.flatMap(\.values).map(\.provenance)
+        let startedAt = childProvenance.map(\.startedAt).min() ?? Date()
+        let completedAt = childProvenance.map(\.completedAt).max() ?? startedAt
+        return try ExecutionProvenance(
+            producer: ProducerIdentity(
+                kind: .engine,
+                identifier: "ElectricalSignoffEngine",
+                version: String(ElectricalSignoffEngineAPI.contractVersion)
+            ),
+            supportingTools: childProvenance.map(\.producer),
+            inputs: request.inputs,
+            invocation: ExecutionInvocation.inProcess(
+                entryPoint: "ElectricalSignoffEngine.execute"
+            ),
+            startedAt: startedAt,
+            completedAt: completedAt
+        )
     }
 
     private func executeSingle(

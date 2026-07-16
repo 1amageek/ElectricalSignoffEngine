@@ -186,10 +186,7 @@ struct EngineTests {
             artifactID: "electrical-topology"
         )
         request.inputs = [topologyReference]
-        request.inputs.append(try fixture.request.materializedArtifact(
-            for: fixture.request.design.artifact,
-            role: "design"
-        ))
+        request.inputs.append(fixture.request.design.artifact)
         request.topologyArtifact = topologyReference
         let result = try await DefaultPowerIntegrityEngine(
             support: ElectricalSignoffExecutionSupport(projectRoot: fixture.root)
@@ -533,7 +530,7 @@ private struct FixtureProject: Sendable {
         let request = ElectricalSignoffRequest(
             runID: "fixture-run",
             inputs: [topologyReference, designReference],
-            design: LogicDesignReference(artifact: designReference.locator, topDesignName: "fixture_top", designDigest: topology.designDigest),
+            design: LogicDesignReference(artifact: designReference, topDesignName: "fixture_top", designDigest: topology.designDigest),
             physicalDesign: PhysicalDesignReference(layoutArtifact: layoutReference, topCell: topology.topCell, layoutDigest: topology.layoutDigest),
             pdk: PDKReference(manifest: pdkReference, processID: "fixture", version: "1", digest: topology.pdkDigest),
             parasitics: parasiticReference,

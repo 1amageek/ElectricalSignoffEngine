@@ -4,7 +4,7 @@ import CircuiteFoundation
 public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
     public let projectRoot: URL
     public let verifyIntegrity: Bool
-    private let foundationArtifactBridge = ElectricalArtifactAccess()
+    private let artifactAccess = ElectricalArtifactAccess()
 
     public init(projectRoot: URL, verifyIntegrity: Bool = true) {
         self.projectRoot = projectRoot.standardizedFileURL
@@ -27,7 +27,7 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
 
         let topologyURL: URL
         do {
-            topologyURL = try foundationArtifactBridge.resolveURL(
+            topologyURL = try artifactAccess.resolveURL(
                 for: topologyReference,
                 relativeTo: projectRoot
             )
@@ -65,13 +65,11 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
     private func uniqueReferences(for request: ElectricalSignoffRequest) throws -> [ArtifactReference] {
         var references: [ArtifactReference] = []
         references.append(contentsOf: request.inputs)
-        references.append(try request.materializedArtifact(for: request.design.artifact, role: "design"))
+        references.append(request.design.artifact)
         references.append(request.physicalDesign.layoutArtifact)
         references.append(request.pdk.manifest)
-        if let powerIntentReference = try request.powerIntent.map({
-            try request.materializedArtifact(for: $0.artifact, role: "power-intent")
-        }) {
-            references.append(powerIntentReference)
+        if let powerIntent = request.powerIntent {
+            references.append(powerIntent.artifact)
         }
         if let parasitics = request.parasitics {
             references.append(parasitics)
@@ -129,7 +127,7 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
 
     private func verify(_ reference: ArtifactReference) throws {
         do {
-            try foundationArtifactBridge.validate(
+            try artifactAccess.validate(
                 reference,
                 relativeTo: projectRoot,
                 verifyIntegrity: verifyIntegrity
@@ -208,10 +206,7 @@ public actor LocalElectricalTopologyLoader: ElectricalTopologyLoading {
             )
         }
         if let powerIntent = request.powerIntent {
-            let powerIntentReference = try request.materializedArtifact(
-                for: powerIntent.artifact,
-                role: "power-intent"
-            )
+            let powerIntentReference = powerIntent.artifact
             guard powerIntent.designDigest.caseInsensitiveCompare(request.design.designDigest) == .orderedSame else {
                 throw ElectricalSignoffError.digestMismatch(
                     kind: "power-intent design",

@@ -46,9 +46,9 @@ authorization.
 
 `ElectricalSignoffExecuting` refines
 `CircuiteFoundation.Engine<ElectricalSignoffRequest, ElectricalSignoffRunResult>`.
-`ElectricalSignoffFoundationEvidence` directly exposes `ArtifactReference`,
-`ExecutionProvenance`, and `DesignDiagnostic` values. Xcircuite invokes the
-published protocol directly.
+`ElectricalSignoffRunResult` directly exposes `ArtifactReference`,
+`ExecutionProvenance`, `EvidenceManifest`, and `DesignDiagnostic` values.
+Xcircuite invokes the published protocol directly.
 
 `ElectricalSignoffEngineAPI.capabilitySnapshot` describes implemented analysis
 axes and execution boundaries. It reports capabilities, not qualification.

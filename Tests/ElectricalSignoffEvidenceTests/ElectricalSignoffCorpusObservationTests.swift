@@ -116,7 +116,7 @@ struct ElectricalSignoffEvidenceTests {
         let request = ElectricalSignoffRequest(
             runID: "qualification-run",
             inputs: [reference],
-            design: LogicDesignReference(artifact: reference.locator, topDesignName: "top", designDigest: "design"),
+            design: LogicDesignReference(artifact: reference, topDesignName: "top", designDigest: "design"),
             physicalDesign: PhysicalDesignReference(layoutArtifact: reference, topCell: "top", layoutDigest: "layout"),
             pdk: PDKReference(manifest: reference, processID: "fixture", version: "1", digest: "pdk-digest"),
             configuration: ElectricalSignoffConfiguration(requiredAxes: [.erc])
@@ -161,11 +161,16 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
                 schemaVersion: 1,
                 runID: request.runID,
                 status: .completed,
-                metadata: provenance,
+                provenance: provenance,
                 payload: payload
             ))
         })
-        return ElectricalSignoffRunResult(runID: request.runID, status: .completed, axisResults: results)
+        return ElectricalSignoffRunResult(
+            runID: request.runID,
+            status: .completed,
+            axisResults: results,
+            provenance: provenance
+        )
     }
 }
 

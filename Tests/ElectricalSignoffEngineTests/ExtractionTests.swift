@@ -114,7 +114,7 @@ struct ExtractionTests {
             runID: fixture.request.runID,
             inputs: [designReference, powerIntentReference],
             design: LogicDesignReference(
-                artifact: designReference.locator,
+                artifact: designReference,
                 topDesignName: "top",
                 designDigest: fixture.request.design.designDigest
             ),
@@ -130,7 +130,7 @@ struct ExtractionTests {
                 digest: pdkReference.sha256
             ),
             powerIntent: PowerIntentReference(
-                artifact: powerIntentReference.locator,
+                artifact: powerIntentReference,
                 designDigest: fixture.request.design.designDigest
             ),
             parasitics: parasiticReference,
@@ -292,7 +292,7 @@ private struct ExtractionFixture: Sendable {
             runID: "extraction-fixture",
             inputs: [designReference],
             design: LogicDesignReference(
-                artifact: designReference.locator,
+                artifact: designReference,
                 topDesignName: "top",
                 designDigest: design.designDigest ?? ""
             ),

@@ -41,7 +41,7 @@ struct FoundationIntegrationTests {
     }
 
     @Test("result evidence exposes artifacts and typed diagnostics")
-    func resultProjectsToFoundationEvidence() throws {
+    func resultDirectlyProvidesFoundationEvidence() throws {
         let report = try makeArtifact(
             id: "electrical-report",
             path: ".xcircuite/runs/run-1/electrical/report.json",
@@ -73,7 +73,7 @@ struct FoundationIntegrationTests {
             status: .completed,
             diagnostics: [diagnostic],
             artifacts: [report],
-            metadata: provenance,
+            provenance: provenance,
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: .erc
@@ -82,20 +82,16 @@ struct FoundationIntegrationTests {
         let result = ElectricalSignoffRunResult(
             runID: "run-1",
             status: .completed,
-            axisResults: [.erc: axisResult]
-        )
-
-        let evidence = try ElectricalSignoffFoundationEvidence(
-            result: result,
+            axisResults: [.erc: axisResult],
             provenance: provenance
         )
 
-        #expect(evidence.artifacts.count == 1)
-        #expect(evidence.evidence.artifacts == evidence.artifacts)
-        #expect(evidence.diagnostics.count == 1)
-        #expect(evidence.diagnostics[0].code.rawValue == "electrical.test.warning")
-        #expect(evidence.diagnostics[0].severity == .warning)
-        #expect(evidence.diagnostics[0].detail == "entity=M1")
+        #expect(result.artifacts.count == 1)
+        #expect(result.evidence.artifacts == result.artifacts)
+        #expect(result.diagnostics.count == 1)
+        #expect(result.diagnostics[0].code.rawValue == "electrical.test.warning")
+        #expect(result.diagnostics[0].severity == .warning)
+        #expect(result.diagnostics[0].detail == "entity=M1")
     }
 }
 

@@ -11,7 +11,7 @@ import PEXParsers
 public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoading {
     public let projectRoot: URL
     public let verifyIntegrity: Bool
-    private let foundationArtifactBridge = ElectricalArtifactAccess()
+    private let artifactAccess = ElectricalArtifactAccess()
 
     public init(projectRoot: URL, verifyIntegrity: Bool = true) {
         self.projectRoot = projectRoot.standardizedFileURL
@@ -31,10 +31,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
             try verify(reference)
         }
 
-        let designReference = try request.materializedArtifact(
-            for: request.design.artifact,
-            role: "design"
-        )
+        let designReference = request.design.artifact
         let designData = try read(designReference, source: "design")
         let physicalData = try read(request.physicalDesign.layoutArtifact, source: "physical-design")
         let pdkData = try read(request.pdk.manifest, source: "pdk")
@@ -123,7 +120,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
 
     private func verify(_ reference: ArtifactReference) throws {
         do {
-            try foundationArtifactBridge.validate(
+            try artifactAccess.validate(
                 reference,
                 relativeTo: projectRoot,
                 verifyIntegrity: verifyIntegrity
@@ -148,7 +145,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         }
         let url: URL
         do {
-            url = try foundationArtifactBridge.resolveURL(
+            url = try artifactAccess.resolveURL(
                 for: reference,
                 relativeTo: projectRoot
             )
@@ -170,7 +167,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         guard let powerIntent = request.powerIntent else {
             return nil
         }
-        let reference = try request.materializedArtifact(for: powerIntent.artifact, role: "power-intent")
+        let reference = powerIntent.artifact
         let data = try read(reference, source: "power-intent")
         do {
             return try JSONDecoder().decode(PowerIntentDesign.self, from: data)
@@ -243,7 +240,7 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
 
     private func resolve(_ reference: ArtifactReference, source: String) throws -> URL {
         do {
-            return try foundationArtifactBridge.resolveURL(
+            return try artifactAccess.resolveURL(
                 for: reference,
                 relativeTo: projectRoot
             )
@@ -364,11 +361,11 @@ public actor LocalElectricalTopologySourceLoader: ElectricalTopologySourceLoadin
         profileReference: ArtifactReference
     ) throws -> [ArtifactReference] {
         var references = request.inputs
-        references.append(try request.materializedArtifact(for: request.design.artifact, role: "design"))
+        references.append(request.design.artifact)
         references.append(request.physicalDesign.layoutArtifact)
         references.append(request.pdk.manifest)
         if let powerIntent = request.powerIntent {
-            references.append(try request.materializedArtifact(for: powerIntent.artifact, role: "power-intent"))
+            references.append(powerIntent.artifact)
         }
         if let parasitics = request.parasitics {
             references.append(parasitics)

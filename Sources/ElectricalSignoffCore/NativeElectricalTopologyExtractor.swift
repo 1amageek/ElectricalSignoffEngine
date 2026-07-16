@@ -288,9 +288,7 @@ public struct NativeElectricalTopologyExtractor: ElectricalTopologyExtracting {
         let domains = try makeDomains(profile: profile, powerIntent: sources.powerIntent)
         let powerIntentDigest: String?
         if let powerIntent = sources.request.powerIntent {
-            powerIntentDigest = try sources.request
-                .materializedArtifact(for: powerIntent.artifact, role: "power-intent")
-                .sha256
+            powerIntentDigest = powerIntent.artifact.sha256
         } else {
             powerIntentDigest = nil
         }

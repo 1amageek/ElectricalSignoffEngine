@@ -65,7 +65,7 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             status: .completed,
             diagnostics: try diagnostics(from: payload.findings),
             artifacts: [artifact],
-            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: payload
         )
     }
@@ -82,7 +82,7 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             runID: request.runID,
             status: .blocked,
             diagnostics: [diagnostic],
-            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -104,7 +104,7 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             runID: request.runID,
             status: .failed,
             diagnostics: [diagnostic],
-            metadata: try metadata(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -125,7 +125,7 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         )
     }
 
-    private func metadata(axis: ElectricalSignoffAnalysisAxis, runID: String, startedAt: Date) throws -> ExecutionProvenance {
+    private func provenance(axis: ElectricalSignoffAnalysisAxis, runID: String, startedAt: Date) throws -> ExecutionProvenance {
         let producer = try ProducerIdentity(
             kind: .engine,
             identifier: "electrical-signoff.\(axis.rawValue)",

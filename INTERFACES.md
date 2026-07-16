@@ -19,9 +19,9 @@ Requests consume `ArtifactReference` values. The topology source loader verifies
 path containment, digest, byte count, identity, and schema before decoding. It
 does not guess an unrelated JSON input as topology.
 
-`ElectricalSignoffFoundationEvidence` publishes Foundation artifacts,
-diagnostics, and provenance directly. The package does not define a parallel
-file-reference type.
+`ElectricalSignoffResult` and `ElectricalSignoffRunResult` publish Foundation
+artifacts, diagnostics, evidence, and provenance directly. The package does not
+define a projection or parallel file-reference type.
 
 ## Canonical topology
 
