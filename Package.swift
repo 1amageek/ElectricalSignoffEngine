@@ -28,7 +28,7 @@ let physicalDesignEngineDependency: Package.Dependency = FileManager.default.fil
     atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
 )
     ? .package(path: "../PhysicalDesignEngine")
-    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "35e200fa4b7116747b1dc592e550fc77f1ccd850")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "43e4c92c03386a3bbce8311e146ec5bdce41b229")
 
 let pexEngineDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
