@@ -34,7 +34,7 @@ let pexEngineDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
 )
     ? .package(path: "../PEXEngine")
-    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "2c909abe23ef8c697d29b584b4733d11869407ec")
+    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "e60a3b1fdb27879fd95c41a81c313750f7a45485")
 
 let package = Package(
     name: "ElectricalSignoffEngine",
