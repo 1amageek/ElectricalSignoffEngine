@@ -114,7 +114,7 @@ struct ElectricalSignoffEvidenceTests {
             byteCount: 1
         )
         let request = ElectricalSignoffRequest(
-            runID: "qualification-run",
+            runID: "corpus-run",
             inputs: [reference],
             design: LogicDesignReference(artifact: reference, topDesignName: "top", designDigest: "design"),
             physicalDesign: PhysicalDesignReference(layoutArtifact: reference, topCell: "top", layoutDigest: "layout"),

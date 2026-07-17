@@ -117,9 +117,9 @@ revision. Xcircuite or another umbrella checkout is not required.
 | Dependency | Local sibling | Remote fallback revision |
 |---|---|---|
 | CircuiteFoundation | `../CircuiteFoundation` | `2ec6ee13a89ac6885be3c26b41a9ee0ef89948ac` |
-| LogicDesign | `../LogicDesign` | `698e54a6861cee247969d89df946d3b0f53c28ca` |
-| PDKKit | `../PDKKit` | `b0d0ab30b044266e1ce3bd008dcec844e51f2302` |
-| PhysicalDesignEngine | `../PhysicalDesignEngine` | `e02131875720eb78fa5789e433af22745ea63e9f` |
+| LogicDesign | `../LogicDesign` | `09768ed203d97d1d0f79f786f9988fcb2cd39155` |
+| PDKKit | `../PDKKit` | `28f3b83304ad2bbb0c2e0269d26616081d90d992` |
+| PhysicalDesignEngine | `../PhysicalDesignEngine` | `a0c263af6873b91bee34caabfd89ec857389a7e5` |
 | PEXEngine | `../PEXEngine` | `f3078e12af274a714e27ec523f19c5c29abd42dd` |
 
 ```bash
