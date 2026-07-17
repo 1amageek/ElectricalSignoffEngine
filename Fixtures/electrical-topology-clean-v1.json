@@ -53,5 +53,6 @@
     "maximumCurrentDensityAperSquareMicron": 1,
     "maximumViaCurrentDensityAperSquareMicron": 1,
     "minimumESDResistanceOhm": 1
-  }
+  },
+  "rulesByCorner": {}
 }

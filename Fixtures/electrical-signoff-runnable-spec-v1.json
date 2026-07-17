@@ -3,7 +3,7 @@
   "corpusID": "electrical-signoff-runnable-fixture",
   "corpusVersion": "1",
   "pdkDigest": "pdk-fixture-v1",
-  "requireIndependentOracle": false,
+  "requireExternalOracleEvidence": false,
   "cases": [
     {
       "caseID": "power-integrity-missing-parasitics",
@@ -11,25 +11,45 @@
       "axis": "power-integrity",
       "request": {
         "schemaVersion": 1,
-        "runID": "qualification-runnable-fixture",
+        "runID": "electrical-signoff-runnable-fixture",
         "inputs": [],
         "design": {
-          "artifact": {"artifactID": "fixture-design", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "netlist", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+          "artifact": {
+            "id": "fixture-design",
+            "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "netlist", "format": "json"},
+            "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"},
+            "byteCount": 2804
+          },
           "topDesignName": "fixture_top",
           "designDigest": "design-fixture-v1"
         },
         "physicalDesign": {
-          "layoutArtifact": {"artifactID": "fixture-layout", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "layout", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+          "layoutArtifact": {
+            "id": "fixture-layout",
+            "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "layout", "format": "json"},
+            "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"},
+            "byteCount": 2804
+          },
           "topCell": "fixture_top",
           "layoutDigest": "layout-fixture-v1"
         },
         "pdk": {
-          "manifest": {"artifactID": "fixture-pdk", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "technology", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+          "manifest": {
+            "id": "fixture-pdk",
+            "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "technology", "format": "json"},
+            "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"},
+            "byteCount": 2804
+          },
           "processID": "fixture",
           "version": "1",
           "digest": "pdk-fixture-v1"
         },
-        "topologyArtifact": {"artifactID": "fixture-topology", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "other", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+        "topologyArtifact": {
+          "id": "fixture-topology",
+          "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "other", "format": "json"},
+          "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"},
+          "byteCount": 2804
+        },
         "configuration": {"operatingConditions": [{"id": "typical", "pdkCornerID": "typical", "temperatureC": 25, "supplyVoltageScale": 1, "activityScale": 1}], "minimumLifetimeHours": 87600, "requiredAxes": ["power-integrity"]}
       },
       "expected": {"status": "blocked", "violationCount": 0, "diagnosticCodes": ["electrical.parasitics.missing"], "metrics": []}
@@ -40,12 +60,12 @@
       "axis": "erc",
       "request": {
         "schemaVersion": 1,
-        "runID": "qualification-runnable-fixture",
+        "runID": "electrical-signoff-runnable-fixture",
         "inputs": [],
-        "design": {"artifact": {"artifactID": "fixture-design", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "netlist", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
-        "physicalDesign": {"layoutArtifact": {"artifactID": "fixture-layout", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "layout", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
-        "pdk": {"manifest": {"artifactID": "fixture-pdk", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "technology", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
-        "topologyArtifact": {"artifactID": "fixture-topology", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "other", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+        "design": {"artifact": {"id": "fixture-design", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "netlist", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
+        "physicalDesign": {"layoutArtifact": {"id": "fixture-layout", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "layout", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
+        "pdk": {"manifest": {"id": "fixture-pdk", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "technology", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
+        "topologyArtifact": {"id": "fixture-topology", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "other", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804},
         "configuration": {"operatingConditions": [{"id": "typical", "pdkCornerID": "typical", "temperatureC": 25, "supplyVoltageScale": 1, "activityScale": 1}], "minimumLifetimeHours": 87600, "requiredAxes": ["erc"]}
       },
       "expected": {"status": "completed", "violationCount": 0, "diagnosticCodes": [], "metrics": []}
@@ -56,12 +76,12 @@
       "axis": "esd",
       "request": {
         "schemaVersion": 1,
-        "runID": "qualification-runnable-fixture",
+        "runID": "electrical-signoff-runnable-fixture",
         "inputs": [],
-        "design": {"artifact": {"artifactID": "fixture-design", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "netlist", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
-        "physicalDesign": {"layoutArtifact": {"artifactID": "fixture-layout", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "layout", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
-        "pdk": {"manifest": {"artifactID": "fixture-pdk", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "technology", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
-        "topologyArtifact": {"artifactID": "fixture-topology", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "other", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+        "design": {"artifact": {"id": "fixture-design", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "netlist", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
+        "physicalDesign": {"layoutArtifact": {"id": "fixture-layout", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "layout", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
+        "pdk": {"manifest": {"id": "fixture-pdk", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "technology", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
+        "topologyArtifact": {"id": "fixture-topology", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "other", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804},
         "configuration": {"operatingConditions": [{"id": "typical", "pdkCornerID": "typical", "temperatureC": 25, "supplyVoltageScale": 1, "activityScale": 1}], "minimumLifetimeHours": 87600, "requiredAxes": ["esd"]}
       },
       "expected": {"status": "completed", "violationCount": 0, "diagnosticCodes": [], "metrics": []}
@@ -72,12 +92,12 @@
       "axis": "latch-up",
       "request": {
         "schemaVersion": 1,
-        "runID": "qualification-runnable-fixture",
+        "runID": "electrical-signoff-runnable-fixture",
         "inputs": [],
-        "design": {"artifact": {"artifactID": "fixture-design", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "netlist", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
-        "physicalDesign": {"layoutArtifact": {"artifactID": "fixture-layout", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "layout", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
-        "pdk": {"manifest": {"artifactID": "fixture-pdk", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "technology", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
-        "topologyArtifact": {"artifactID": "fixture-topology", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "other", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+        "design": {"artifact": {"id": "fixture-design", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "netlist", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
+        "physicalDesign": {"layoutArtifact": {"id": "fixture-layout", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "layout", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
+        "pdk": {"manifest": {"id": "fixture-pdk", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "technology", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
+        "topologyArtifact": {"id": "fixture-topology", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "other", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804},
         "configuration": {"operatingConditions": [{"id": "typical", "pdkCornerID": "typical", "temperatureC": 25, "supplyVoltageScale": 1, "activityScale": 1}], "minimumLifetimeHours": 87600, "requiredAxes": ["latch-up"]}
       },
       "expected": {"status": "completed", "violationCount": 0, "diagnosticCodes": [], "metrics": []}
@@ -88,12 +108,12 @@
       "axis": "aging",
       "request": {
         "schemaVersion": 1,
-        "runID": "qualification-runnable-fixture",
+        "runID": "electrical-signoff-runnable-fixture",
         "inputs": [],
-        "design": {"artifact": {"artifactID": "fixture-design", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "netlist", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
-        "physicalDesign": {"layoutArtifact": {"artifactID": "fixture-layout", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "layout", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
-        "pdk": {"manifest": {"artifactID": "fixture-pdk", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "technology", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
-        "topologyArtifact": {"artifactID": "fixture-topology", "path": "Fixtures/electrical-topology-clean-v1.json", "kind": "other", "format": "JSON", "sha256": "a72a0ea7db859436fb55b246103017132a0bb72c2fa813ff659a9b31e8e9e420", "byteCount": 2781},
+        "design": {"artifact": {"id": "fixture-design", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "netlist", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topDesignName": "fixture_top", "designDigest": "design-fixture-v1"},
+        "physicalDesign": {"layoutArtifact": {"id": "fixture-layout", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "layout", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "topCell": "fixture_top", "layoutDigest": "layout-fixture-v1"},
+        "pdk": {"manifest": {"id": "fixture-pdk", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "technology", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804}, "processID": "fixture", "version": "1", "digest": "pdk-fixture-v1"},
+        "topologyArtifact": {"id": "fixture-topology", "locator": {"location": {"storage": "workspaceRelative", "value": "Fixtures/electrical-topology-clean-v1.json"}, "role": "input", "kind": "other", "format": "json"}, "digest": {"algorithm": "sha256", "hexadecimalValue": "a1e12dbb06aaec2ecb7c8283f0771d43d2690dbdf1974cf29cb05d3a64e77c06"}, "byteCount": 2804},
         "configuration": {"operatingConditions": [{"id": "typical", "pdkCornerID": "typical", "temperatureC": 25, "supplyVoltageScale": 1, "activityScale": 1}], "minimumLifetimeHours": 87600, "requiredAxes": ["aging"]}
       },
       "expected": {"status": "completed", "violationCount": 0, "diagnosticCodes": [], "metrics": []}

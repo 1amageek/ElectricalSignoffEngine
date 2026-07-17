@@ -17,5 +17,6 @@
   "wells": [],
   "substrateContacts": [],
   "agingModels": [],
-  "rules": {"maximumIRDropV": 0.18, "maximumCurrentDensityAperSquareMicron": 1, "maximumViaCurrentDensityAperSquareMicron": 1, "minimumESDResistanceOhm": 1}
+  "rules": {"maximumIRDropV": 0.18, "maximumCurrentDensityAperSquareMicron": 1, "maximumViaCurrentDensityAperSquareMicron": 1, "minimumESDResistanceOhm": 1},
+  "rulesByCorner": {}
 }

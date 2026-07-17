@@ -22,7 +22,7 @@ Evaluate power integrity and electrical reliability against one shared extracted
 
 - IR, EM, ERC, ESD, latch-up and aging results reference identical design and PDK digests.
 - Synthetic one-dimensional power models cannot satisfy signoff.
-- Each axis retains an independent payload, CLI and qualification status.
+- Each axis retains an independent payload, CLI result and raw evidence status.
 
 ## Common platform requirements
 

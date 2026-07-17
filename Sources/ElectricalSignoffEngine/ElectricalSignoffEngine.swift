@@ -149,7 +149,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
                   result.payload.axis == axis,
                   result.payload.cornerID == request.configuration.operatingCondition.id else {
                 throw ElectricalSignoffError.invalidExecutionResult(
-                    "axis (axis.rawValue) returned mismatched run, schema, axis or corner identity"
+                    "axis \(axis.rawValue) returned mismatched run, schema, axis or corner identity"
                 )
             }
             results[axis] = result

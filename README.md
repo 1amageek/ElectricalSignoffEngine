@@ -70,9 +70,9 @@ case measurements and `ElectricalSignoffObservationMaturity`.
 `ElectricalSignoffOracleObservationSet` for independent correlation. Oracle
 independence is never inferred from a display name.
 
-The checked-in fixtures are process-independent contract data. They test
-parsing, analysis, artifact integrity, and observation correlation; they do not
-establish foundry acceptance or release eligibility.
+The checked-in fixtures are process-independent contract data. Together with the
+contract tests, they cover parsing, analysis, artifact integrity, and observation
+correlation; they do not establish foundry acceptance or release eligibility.
 
 ## CLI
 
@@ -90,7 +90,6 @@ swift run electrical-signoff \
 
 swift run electrical-signoff \
   --corpus-spec Fixtures/electrical-signoff-runnable-spec-v1.json \
-  --oracle-observations Fixtures/electrical-signoff-oracle-observations-v1.json \
   --project-root . \
   --pretty
 ```
@@ -118,10 +117,10 @@ revision. Xcircuite or another umbrella checkout is not required.
 | Dependency | Local sibling | Remote fallback revision |
 |---|---|---|
 | CircuiteFoundation | `../CircuiteFoundation` | `2ec6ee13a89ac6885be3c26b41a9ee0ef89948ac` |
-| LogicDesign | `../LogicDesign` | `8e0c8c2c63152aa45bf12d943fa034bb1aba0f1e` |
-| PDKKit | `../PDKKit` | `aa145dfaa67454c44ac7767c37a28ab7f4b1d2e2` |
-| PhysicalDesignEngine | `../PhysicalDesignEngine` | `2a3f4215319b8515120f19a5bcb5627122663ff3` |
-| PEXEngine | `../PEXEngine` | `2405356655e625c1bab6f20814f92af61c0caf2f` |
+| LogicDesign | `../LogicDesign` | `698e54a6861cee247969d89df946d3b0f53c28ca` |
+| PDKKit | `../PDKKit` | `b0d0ab30b044266e1ce3bd008dcec844e51f2302` |
+| PhysicalDesignEngine | `../PhysicalDesignEngine` | `e02131875720eb78fa5789e433af22745ea63e9f` |
+| PEXEngine | `../PEXEngine` | `f3078e12af274a714e27ec523f19c5c29abd42dd` |
 
 ```bash
 xcodebuild -scheme ElectricalSignoffEngine-Package -destination 'platform=macOS' build
