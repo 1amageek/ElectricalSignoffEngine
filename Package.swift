@@ -28,13 +28,13 @@ let physicalDesignEngineDependency: Package.Dependency = FileManager.default.fil
     atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
 )
     ? .package(path: "../PhysicalDesignEngine")
-    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "43e4c92c03386a3bbce8311e146ec5bdce41b229")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "ef04beea945c122a0185ac0da08af285c43aa809")
 
 let pexEngineDependency: Package.Dependency = FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
 )
     ? .package(path: "../PEXEngine")
-    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "e60a3b1fdb27879fd95c41a81c313750f7a45485")
+    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "f53859d6d87c4504bad4c59e29a9ef1befcd2ab8")
 
 let package = Package(
     name: "ElectricalSignoffEngine",
