@@ -31,7 +31,7 @@ let physicalDesignEngineDependency: Package.Dependency = isLSIWorkspace && FileM
     atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
 )
     ? .package(path: "../PhysicalDesignEngine")
-    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "a0c263af6873b91bee34caabfd89ec857389a7e5")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "a98c0895c0c0340326f79d7838ddc37ba86cfa2b")
 
 let pexEngineDependency: Package.Dependency = isLSIWorkspace && FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
