@@ -24,9 +24,9 @@ struct EngineTests {
         let result = try await ElectricalSignoffEngine(support: support).execute(fixture.request)
 
         #expect(result.status == .completed)
-        #expect(Set(result.axisResults.keys) == Set(ElectricalSignoffEngineAPI.supportedAxes))
+        #expect(Set(result.axisResults.keys) == Set(ElectricalSignoffEngine.supportedAxes))
         #expect(result.provenance.inputs == fixture.request.executionInputArtifacts)
-        for axis in ElectricalSignoffEngineAPI.supportedAxes {
+        for axis in ElectricalSignoffEngine.supportedAxes {
             let axisResult = try #require(result.axisResults[axis])
             #expect(axisResult.status == .completed)
             #expect(axisResult.payload.violationCount == 0)

@@ -55,8 +55,9 @@ directory or owns a run ledger.
 `ExecutionProvenance`, `EvidenceManifest`, and `DesignDiagnostic` values.
 Xcircuite invokes the published protocol directly.
 
-`ElectricalSignoffEngineAPI.capabilitySnapshot` describes implemented analysis
-axes and execution boundaries. It reports capabilities, not qualification.
+`ElectricalSignoffEngine.capability` describes the
+analysis axes implemented by `ElectricalSignoffEngine` and its execution
+boundaries. It reports capabilities, not qualification.
 External process-specific implementations are injected through
 `ExternalElectricalSignoffRunning`.
 

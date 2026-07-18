@@ -8,6 +8,12 @@ import AgingEngine
 import CircuiteFoundation
 
 public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
+    public static let implementationVersion = "1"
+    public static let supportedAxes = ElectricalSignoffAnalysisAxis.executableCases
+    public static let capability = ElectricalSignoffCapabilitySnapshot(
+        supportedAxes: supportedAxes
+    )
+
     public let powerIntegrity: any PowerIntegrityAnalyzing
     public let erc: any ERCExecuting
     public let esd: any ESDExecuting
@@ -46,7 +52,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
 
     public func execute(
         _ request: ElectricalSignoffRequest,
-        axes: [ElectricalSignoffAnalysisAxis] = ElectricalSignoffEngineAPI.supportedAxes
+        axes: [ElectricalSignoffAnalysisAxis] = Self.supportedAxes
     ) async throws -> ElectricalSignoffRunResult {
         try request.validate()
         guard !axes.isEmpty else {
@@ -110,7 +116,7 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
             producer: ProducerIdentity(
                 kind: .engine,
                 identifier: "ElectricalSignoffEngine",
-                version: String(ElectricalSignoffEngineAPI.contractVersion)
+                version: Self.implementationVersion
             ),
             supportingTools: childProvenance.map(\.producer),
             inputs: request.executionInputArtifacts,

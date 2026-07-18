@@ -68,7 +68,7 @@ struct FoundationIntegrationTests {
             detail: "entity=M1"
         )
         let axisResult = ElectricalSignoffResult(
-            schemaVersion: ElectricalSignoffEngineAPI.contractVersion,
+            schemaVersion: ElectricalSignoffRunResult.currentSchemaVersion,
             runID: "run-1",
             status: .completed,
             diagnostics: [diagnostic],

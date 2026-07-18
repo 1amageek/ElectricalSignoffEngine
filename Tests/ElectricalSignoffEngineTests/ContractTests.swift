@@ -9,9 +9,16 @@ import Testing
 
 @Suite("ElectricalSignoffEngine contract")
 struct ContractTests {
-    @Test("contract version starts at one")
-    func contractVersion() {
-        #expect(ElectricalSignoffEngineAPI.contractVersion == 1)
+    @Test("run result schema version starts at one")
+    func runResultSchemaVersion() {
+        #expect(ElectricalSignoffRunResult.currentSchemaVersion == 1)
+    }
+
+    @Test("capability snapshot reflects the concrete engine")
+    func capabilitySnapshot() {
+        let snapshot = ElectricalSignoffEngine.capability
+
+        #expect(snapshot.engineID == "ElectricalSignoffEngine")
+        #expect(snapshot.supportedAxes == ElectricalSignoffEngine.supportedAxes)
     }
 }
-

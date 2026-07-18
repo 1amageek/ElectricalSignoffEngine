@@ -12,6 +12,6 @@ where Request == ElectricalSignoffRequest, Output == ElectricalSignoffRunResult 
 
 public extension ElectricalSignoffExecuting {
     func execute(_ request: ElectricalSignoffRequest) async throws -> ElectricalSignoffRunResult {
-        try await execute(request, axes: ElectricalSignoffEngineAPI.supportedAxes)
+        try await execute(request, axes: ElectricalSignoffAnalysisAxis.executableCases)
     }
 }

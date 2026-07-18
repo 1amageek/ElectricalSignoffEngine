@@ -5,7 +5,7 @@ import ElectricalSignoffCore
 public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable, ArtifactProducing,
     EvidenceProviding, DiagnosticReporting
 {
-    public static let currentSchemaVersion = ElectricalSignoffEngineAPI.contractVersion
+    public static let currentSchemaVersion = 1
 
     public var schemaVersion: Int
     public var runID: String

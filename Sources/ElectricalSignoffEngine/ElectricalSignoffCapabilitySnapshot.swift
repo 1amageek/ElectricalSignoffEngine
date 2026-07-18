@@ -13,7 +13,7 @@ public struct ElectricalSignoffCapabilitySnapshot: Sendable, Hashable, Codable {
     public init(
         schemaVersion: Int = 1,
         engineID: String = "ElectricalSignoffEngine",
-        supportedAxes: [ElectricalSignoffAnalysisAxis] = ElectricalSignoffEngineAPI.supportedAxes,
+        supportedAxes: [ElectricalSignoffAnalysisAxis],
         nativeTopologyFormats: [String] = ["JSON"],
         externalAdapterBoundary: String = "ExternalElectricalSignoffRunning",
         validationScope: String = "native-fixture-corpus",

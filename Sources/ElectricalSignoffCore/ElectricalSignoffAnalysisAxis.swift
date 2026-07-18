@@ -7,4 +7,6 @@ public enum ElectricalSignoffAnalysisAxis: String, Sendable, Hashable, Codable, 
     case latchUp = "latch-up"
     case aging
     case aggregate
+
+    public static let executableCases = allCases.filter { $0 != .aggregate }
 }
