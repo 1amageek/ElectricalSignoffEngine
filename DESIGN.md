@@ -59,9 +59,10 @@ flowchart LR
   Native --> Expected[Status / count / diagnostics / tolerance comparison]
   Oracle[Independent oracle] --> Agreement[Per-case correlation]
   Expected --> Agreement
-  Agreement --> Report[Immutable qualification report]
-  Report --> Evidence[ToolEvidence]
-  Evidence --> Trust[ToolQualification policy]
+  Agreement --> Report[Immutable domain assessment report]
+  Report --> Observation[ObservationRecord]
+  Observation --> Evidence[ToolQualification evidence]
+  Evidence --> Trust[ToolQualification record and policy]
   Trust --> Release[Release eligibility]
 ```
 
