@@ -26,7 +26,8 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
         data: Data,
         artifactID: String,
         runID: String,
-        axis: ElectricalSignoffAnalysisAxis
+        axis: ElectricalSignoffAnalysisAxis,
+        producer: ProducerIdentity
     ) async throws -> ArtifactReference {
         try prepareArtifactRoot()
         let runSegment = try ElectricalArtifactPathSegment(validating: runID)
@@ -78,7 +79,8 @@ public actor LocalElectricalArtifactStore: ElectricalArtifactStoring {
                 format: .json
             ),
             digest: try SHA256ContentDigester().digest(data: data),
-            byteCount: UInt64(data.count)
+            byteCount: UInt64(data.count),
+            producer: producer
         )
     }
 

@@ -42,6 +42,12 @@ struct FoundationIntegrationTests {
 
     @Test("result evidence exposes artifacts and typed diagnostics")
     func resultDirectlyProvidesFoundationEvidence() throws {
+        let childProducer = try ProducerIdentity(
+            kind: .engine,
+            identifier: "electrical-signoff.erc",
+            version: "1.0.0",
+            build: String(repeating: "a", count: 64)
+        )
         let report = try makeArtifact(
             id: "electrical-report",
             path: ".xcircuite/runs/run-1/electrical/report.json",
@@ -49,15 +55,27 @@ struct FoundationIntegrationTests {
             kind: .report,
             format: .json,
             hexadecimalDigest: String(repeating: "b", count: 64),
-            byteCount: 16
+            byteCount: 16,
+            producer: childProducer
         )
         let instant = Date(timeIntervalSince1970: 100)
+        let childProvenance = try ExecutionProvenance(
+            producer: childProducer,
+            invocation: try .inProcess(entryPoint: "ElectricalSignoffEngine.erc"),
+            environment: try testEnvironmentFingerprint(),
+            startedAt: instant,
+            completedAt: instant
+        )
         let provenance = try ExecutionProvenance(
             producer: try ProducerIdentity(
                 kind: .engine,
-                identifier: "ElectricalSignoffEngine",
-                version: "1"
+                identifier: "native-electrical-signoff",
+                version: "1.0.0",
+                build: String(repeating: "b", count: 64)
             ),
+            supportingTools: [childProducer],
+            invocation: try .inProcess(entryPoint: "ElectricalSignoffEngine.execute"),
+            environment: try testEnvironmentFingerprint(),
             startedAt: instant,
             completedAt: instant
         )
@@ -73,7 +91,7 @@ struct FoundationIntegrationTests {
             status: .completed,
             diagnostics: [diagnostic],
             artifacts: [report],
-            provenance: provenance,
+            provenance: childProvenance,
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: .erc
@@ -85,6 +103,7 @@ struct FoundationIntegrationTests {
             axisResults: [.erc: axisResult],
             provenance: provenance
         )
+        try result.validate()
 
         #expect(result.artifacts.count == 1)
         #expect(result.evidence.artifacts == result.artifacts)
@@ -102,7 +121,8 @@ private func makeArtifact(
     kind: ArtifactKind,
     format: ArtifactFormat,
     hexadecimalDigest: String,
-    byteCount: UInt64
+    byteCount: UInt64,
+    producer: ProducerIdentity? = nil
 ) throws -> ArtifactReference {
     try ArtifactReference(
         id: ArtifactID(rawValue: id),
@@ -116,6 +136,19 @@ private func makeArtifact(
             algorithm: .sha256,
             hexadecimalValue: hexadecimalDigest
         ),
-        byteCount: byteCount
+        byteCount: byteCount,
+        producer: producer
+    )
+}
+
+private func testEnvironmentFingerprint() throws -> ExecutionEnvironmentFingerprint {
+    try ExecutionEnvironmentFingerprint(
+        platform: "test",
+        architecture: "test",
+        toolchain: "test",
+        environmentDigest: ContentDigest(
+            algorithm: .sha256,
+            hexadecimalValue: String(repeating: "c", count: 64)
+        )
     )
 }

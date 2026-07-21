@@ -40,6 +40,13 @@ Kernel availability, corpus validation, oracle correlation, process-scoped quali
 
 All outputs are immutable run artifacts with format, digest, producer metadata and the input design/PDK revision needed to reproduce the result.
 
+Every axis result binds its exact input artifact set, in-process invocation,
+environment fingerprint, implementation version, and executable SHA-256. The
+aggregate result records the same input set and lists every axis producer as a
+supporting tool. Artifact references carry the producer that emitted their
+bytes. Decoding or release consumption must reject missing identity fields,
+producer mismatches, or artifacts that are not bound to the retained execution.
+
 `LocalElectricalArtifactStore` receives an artifact root and
 `ElectricalArtifactNamespace`. It validates every namespace, run, axis, and
 artifact path segments, rejects traversal and symbolic-link escapes, and

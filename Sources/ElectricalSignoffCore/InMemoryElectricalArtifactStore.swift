@@ -13,7 +13,8 @@ public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
         data: Data,
         artifactID: String,
         runID: String,
-        axis: ElectricalSignoffAnalysisAxis
+        axis: ElectricalSignoffAnalysisAxis,
+        producer: ProducerIdentity
     ) async throws -> ArtifactReference {
         let runSegment = try ElectricalArtifactPathSegment(validating: runID)
         let axisSegment = try ElectricalArtifactPathSegment(validating: axis.rawValue)
@@ -34,7 +35,8 @@ public actor InMemoryElectricalArtifactStore: ElectricalArtifactStoring {
                 format: .json
             ),
             digest: try SHA256ContentDigester().digest(data: data),
-            byteCount: UInt64(data.count)
+            byteCount: UInt64(data.count),
+            producer: producer
         )
     }
 

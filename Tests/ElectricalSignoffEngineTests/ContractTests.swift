@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import ElectricalSignoffCore
 @testable import PowerIntegrityEngine
@@ -15,10 +16,15 @@ struct ContractTests {
     }
 
     @Test("capability snapshot reflects the concrete engine")
-    func capabilitySnapshot() {
+    func capabilitySnapshot() throws {
         let snapshot = ElectricalSignoffEngine.capability
 
+        #expect(snapshot.schemaVersion == 2)
         #expect(snapshot.engineID == "ElectricalSignoffEngine")
         #expect(snapshot.supportedAxes == ElectricalSignoffEngine.supportedAxes)
+
+        let encoded = try JSONEncoder().encode(snapshot)
+        let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        #expect(object["externalAdapterBoundary"] == nil)
     }
 }

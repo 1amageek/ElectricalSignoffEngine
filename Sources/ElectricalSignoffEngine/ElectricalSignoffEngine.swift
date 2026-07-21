@@ -8,7 +8,7 @@ import AgingEngine
 import CircuiteFoundation
 
 public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
-    public static let implementationVersion = "1"
+    public static let implementationVersion = "1.0.0"
     public static let supportedAxes = ElectricalSignoffAnalysisAxis.executableCases
     public static let capability = ElectricalSignoffCapabilitySnapshot(
         supportedAxes: supportedAxes
@@ -110,18 +110,36 @@ public struct ElectricalSignoffEngine: ElectricalSignoffExecuting {
         results: [String: [ElectricalSignoffAnalysisAxis: ElectricalSignoffResult]]
     ) throws -> ExecutionProvenance {
         let childProvenance = results.values.flatMap(\.values).map(\.provenance)
+        guard !childProvenance.isEmpty,
+              childProvenance.allSatisfy({
+                  $0.invocation != nil
+                      && $0.environment != nil
+                      && $0.producer.build != nil
+                      && $0.inputs == request.executionInputArtifacts
+              }) else {
+            throw ElectricalSignoffError.invalidExecutionResult(
+                "electrical signoff child results must retain complete execution lineage"
+            )
+        }
         let startedAt = childProvenance.map(\.startedAt).min() ?? Date()
         let completedAt = childProvenance.map(\.completedAt).max() ?? startedAt
         return try ExecutionProvenance(
             producer: ProducerIdentity(
                 kind: .engine,
-                identifier: "ElectricalSignoffEngine",
-                version: Self.implementationVersion
+                identifier: "native-electrical-signoff",
+                version: Self.implementationVersion,
+                build: ElectricalSignoffRuntimeIdentity.currentExecutableDigest()
             ),
-            supportingTools: childProvenance.map(\.producer),
+            supportingTools: Array(Set(childProvenance.map(\.producer))).sorted {
+                ($0.identifier, $0.version, $0.build ?? "")
+                    < ($1.identifier, $1.version, $1.build ?? "")
+            },
             inputs: request.executionInputArtifacts,
             invocation: ExecutionInvocation.inProcess(
                 entryPoint: "ElectricalSignoffEngine.execute"
+            ),
+            environment: try ElectricalSignoffRuntimeIdentity.environmentFingerprint(
+                toolchain: "native-electrical-signoff-\(Self.implementationVersion)"
             ),
             startedAt: startedAt,
             completedAt: completedAt

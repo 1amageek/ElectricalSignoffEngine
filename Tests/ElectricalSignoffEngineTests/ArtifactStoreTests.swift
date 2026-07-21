@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CircuiteFoundation
 @testable import ElectricalSignoffCore
 
 @Suite("Electrical artifact stores")
@@ -25,11 +26,13 @@ struct ArtifactStoreTests {
     func inMemoryStorageRejectsDuplicatesAndConflicts() async throws {
         let store = InMemoryElectricalArtifactStore()
         let data = Data("first".utf8)
+        let producer = try producer()
         let reference = try await store.store(
             data: data,
             artifactID: "report",
             runID: "run-1",
-            axis: .erc
+            axis: .erc,
+            producer: producer
         )
         #expect(reference.path == "electrical-signoff/run-1/erc/report.json")
 
@@ -38,7 +41,8 @@ struct ArtifactStoreTests {
                 data: data,
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
         await #expect(throws: ElectricalArtifactStoreError.conflictingArtifact(reference.path)) {
@@ -46,7 +50,8 @@ struct ArtifactStoreTests {
                 data: Data("second".utf8),
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
     }
@@ -60,11 +65,13 @@ struct ArtifactStoreTests {
             namespace: .electricalSignoff
         )
         let data = Data("first".utf8)
+        let producer = try producer()
         let reference = try await store.store(
             data: data,
             artifactID: "report",
             runID: "run-1",
-            axis: .erc
+            axis: .erc,
+            producer: producer
         )
         #expect(reference.path == "electrical-signoff/run-1/erc/report.json")
         #expect(try Data(contentsOf: root.appending(path: reference.path)) == data)
@@ -74,7 +81,8 @@ struct ArtifactStoreTests {
                 data: data,
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
         await #expect(throws: ElectricalArtifactStoreError.conflictingArtifact(reference.path)) {
@@ -82,7 +90,8 @@ struct ArtifactStoreTests {
                 data: Data("second".utf8),
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
     }
@@ -103,6 +112,7 @@ struct ArtifactStoreTests {
             artifactRoot: root,
             namespace: .electricalSignoff
         )
+        let producer = try producer()
 
         await #expect(throws: ElectricalArtifactStoreError.symbolicLinkInPath(
             root.appending(path: "electrical-signoff").path(percentEncoded: false)
@@ -111,7 +121,8 @@ struct ArtifactStoreTests {
                 data: Data("data".utf8),
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
     }
@@ -129,6 +140,7 @@ struct ArtifactStoreTests {
             artifactRoot: root,
             namespace: .electricalSignoff
         )
+        let producer = try producer()
         try FileManager.default.createSymbolicLink(at: root, withDestinationURL: outside)
 
         await #expect(throws: ElectricalArtifactStoreError.rootIsSymbolicLink(
@@ -138,7 +150,8 @@ struct ArtifactStoreTests {
                 data: Data("data".utf8),
                 artifactID: "report",
                 runID: "run-1",
-                axis: .erc
+                axis: .erc,
+                producer: producer
             )
         }
     }
@@ -148,6 +161,15 @@ struct ArtifactStoreTests {
             .appending(path: "electrical-artifact-store-\(name)-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    private func producer() throws -> ProducerIdentity {
+        try ProducerIdentity(
+            kind: .engine,
+            identifier: "electrical-signoff.erc",
+            version: "1.0.0",
+            build: String(repeating: "a", count: 64)
+        )
     }
 
     private func removeTemporaryDirectory(_ url: URL) {

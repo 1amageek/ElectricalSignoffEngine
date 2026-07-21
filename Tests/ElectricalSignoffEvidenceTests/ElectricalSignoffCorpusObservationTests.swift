@@ -141,12 +141,26 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
         _ request: ElectricalSignoffRequest,
         axes: [ElectricalSignoffAnalysisAxis]
     ) async throws -> ElectricalSignoffRunResult {
+        let childProducer = try ProducerIdentity(
+            kind: .engine,
+            identifier: "stub",
+            version: "1",
+            build: String(repeating: "a", count: 64)
+        )
+        let environment = try ExecutionEnvironmentFingerprint(
+            platform: "test",
+            architecture: "test",
+            toolchain: "test",
+            environmentDigest: ContentDigest(
+                algorithm: .sha256,
+                hexadecimalValue: String(repeating: "b", count: 64)
+            )
+        )
         let provenance = try ExecutionProvenance(
-            producer: try ProducerIdentity(
-                kind: .engine,
-                identifier: "stub",
-                version: "1"
-            ),
+            producer: childProducer,
+            inputs: request.executionInputArtifacts,
+            invocation: try .inProcess(entryPoint: "ElectricalSignoffEvidenceTests.stub"),
+            environment: environment,
             startedAt: Date(timeIntervalSince1970: 1),
             completedAt: Date(timeIntervalSince1970: 1)
         )
@@ -165,11 +179,25 @@ private struct StubElectricalSignoffEngine: ElectricalSignoffExecuting {
                 payload: payload
             ))
         })
+        let runProvenance = try ExecutionProvenance(
+            producer: try ProducerIdentity(
+                kind: .engine,
+                identifier: "stub-run",
+                version: "1",
+                build: String(repeating: "c", count: 64)
+            ),
+            supportingTools: [childProducer],
+            inputs: request.executionInputArtifacts,
+            invocation: try .inProcess(entryPoint: "ElectricalSignoffEvidenceTests.stubRun"),
+            environment: environment,
+            startedAt: Date(timeIntervalSince1970: 1),
+            completedAt: Date(timeIntervalSince1970: 1)
+        )
         return ElectricalSignoffRunResult(
             runID: request.runID,
             status: .completed,
             axisResults: results,
-            provenance: provenance
+            provenance: runProvenance
         )
     }
 }

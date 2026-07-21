@@ -6,17 +6,20 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
     public let artifactStore: any ElectricalArtifactStoring
     public let clock: any ElectricalClock
     public let implementationVersion: String
+    public let implementationBuild: String?
 
     public init(
         loader: any ElectricalTopologyLoading,
         artifactStore: any ElectricalArtifactStoring = InMemoryElectricalArtifactStore(),
         clock: any ElectricalClock = SystemElectricalClock(),
-        implementationVersion: String = "1"
+        implementationVersion: String = "1.0.0",
+        implementationBuild: String? = nil
     ) {
         self.loader = loader
         self.artifactStore = artifactStore
         self.clock = clock
         self.implementationVersion = implementationVersion
+        self.implementationBuild = implementationBuild
     }
 
     public init(
@@ -24,13 +27,15 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         verifyIntegrity: Bool = true,
         artifactStore: (any ElectricalArtifactStoring)? = nil,
         clock: any ElectricalClock = SystemElectricalClock(),
-        implementationVersion: String = "1"
+        implementationVersion: String = "1.0.0",
+        implementationBuild: String? = nil
     ) {
         self.init(
             loader: LocalElectricalTopologyLoader(projectRoot: projectRoot, verifyIntegrity: verifyIntegrity),
             artifactStore: artifactStore ?? InMemoryElectricalArtifactStore(),
             clock: clock,
-            implementationVersion: implementationVersion
+            implementationVersion: implementationVersion,
+            implementationBuild: implementationBuild
         )
     }
 
@@ -53,11 +58,13 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         } catch {
             throw ElectricalSignoffError.artifactPersistence("report encoding failed: \(error.localizedDescription)")
         }
+        let producer = try producer(axis: axis)
         let artifact = try await artifactStore.store(
             data: data,
             artifactID: artifactID(axis: axis, cornerID: payload.cornerID),
             runID: request.runID,
-            axis: axis
+            axis: axis,
+            producer: producer
         )
         return ElectricalSignoffResult(
             schemaVersion: ElectricalSignoffRequest.currentSchemaVersion,
@@ -65,7 +72,12 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             status: .completed,
             diagnostics: try diagnostics(from: payload.findings),
             artifacts: [artifact],
-            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(
+                axis: axis,
+                request: request,
+                producer: producer,
+                startedAt: startedAt
+            ),
             payload: payload
         )
     }
@@ -82,7 +94,12 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             runID: request.runID,
             status: .blocked,
             diagnostics: [diagnostic],
-            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(
+                axis: axis,
+                request: request,
+                producer: producer(axis: axis),
+                startedAt: startedAt
+            ),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -104,7 +121,12 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
             runID: request.runID,
             status: .failed,
             diagnostics: [diagnostic],
-            provenance: try provenance(axis: axis, runID: request.runID, startedAt: startedAt),
+            provenance: try provenance(
+                axis: axis,
+                request: request,
+                producer: producer(axis: axis),
+                startedAt: startedAt
+            ),
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
                 axis: axis,
@@ -125,16 +147,30 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         )
     }
 
-    private func provenance(axis: ElectricalSignoffAnalysisAxis, runID: String, startedAt: Date) throws -> ExecutionProvenance {
-        let producer = try ProducerIdentity(
+    private func producer(axis: ElectricalSignoffAnalysisAxis) throws -> ProducerIdentity {
+        try ProducerIdentity(
             kind: .engine,
             identifier: "electrical-signoff.\(axis.rawValue)",
-            version: implementationVersion
+            version: implementationVersion,
+            build: implementationBuild
+                ?? ElectricalSignoffRuntimeIdentity.currentExecutableDigest()
         )
+    }
+
+    private func provenance(
+        axis: ElectricalSignoffAnalysisAxis,
+        request: ElectricalSignoffRequest,
+        producer: ProducerIdentity,
+        startedAt: Date
+    ) throws -> ExecutionProvenance {
         return try ExecutionProvenance(
             producer: producer,
+            inputs: request.executionInputArtifacts,
             invocation: try ExecutionInvocation.inProcess(
                 entryPoint: "ElectricalSignoffEngine.\(axis.rawValue)"
+            ),
+            environment: try ElectricalSignoffRuntimeIdentity.environmentFingerprint(
+                toolchain: "\(producer.identifier)-\(producer.version)"
             ),
             startedAt: startedAt,
             completedAt: clock.now

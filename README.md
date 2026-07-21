@@ -23,6 +23,11 @@ temperature, voltage scale, and activity scale. Results preserve every corner
 and expose typed violations, blocked states, provenance, and immutable
 artifacts.
 
+Execution evidence is fail-closed: every axis records the exact inputs,
+invocation, environment fingerprint, implementation version, and executable
+SHA-256. Output artifacts retain that producer identity, and the aggregate run
+binds all axis producers as supporting tools.
+
 ## Ownership boundary
 
 ```mermaid
@@ -58,8 +63,10 @@ Xcircuite invokes the published protocol directly.
 `ElectricalSignoffEngine.capability` describes the
 analysis axes implemented by `ElectricalSignoffEngine` and its execution
 boundaries. It reports capabilities, not qualification.
-External process-specific implementations are injected through
-`ExternalElectricalSignoffRunning`.
+External process-specific implementations conform directly to the axis
+protocol they implement: `PowerIntegrityAnalyzing`, `ERCExecuting`,
+`ESDExecuting`, `LatchUpExecuting`, or `AgingAnalyzing`. The package does not
+provide a generic runner or an adapter layer between these protocols.
 
 ## Corpus observations
 

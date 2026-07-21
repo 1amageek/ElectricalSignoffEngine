@@ -6,6 +6,7 @@ public protocol ElectricalArtifactStoring: Sendable {
         data: Data,
         artifactID: String,
         runID: String,
-        axis: ElectricalSignoffAnalysisAxis
+        axis: ElectricalSignoffAnalysisAxis,
+        producer: ProducerIdentity
     ) async throws -> ArtifactReference
 }

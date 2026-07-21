@@ -124,6 +124,15 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable, ArtifactP
                 "run evidence does not match run provenance and artifacts"
             )
         }
+        guard provenance.invocation != nil,
+              provenance.environment != nil,
+              isSHA256(provenance.producer.build),
+              !provenance.supportingTools.isEmpty,
+              provenance.supportingTools.allSatisfy({ isSHA256($0.build) }) else {
+            throw ElectricalSignoffError.invalidExecutionResult(
+                "run provenance does not retain complete executable and environment identity"
+            )
+        }
         for (axis, envelope) in axisResults {
             try validate(envelope, axis: axis, cornerID: nil)
         }
@@ -150,13 +159,30 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable, ArtifactP
               envelope.payload.violationCount >= 0,
               envelope.evidence.provenance == envelope.provenance,
               envelope.evidence.artifacts == envelope.artifacts,
+              envelope.provenance.invocation != nil,
+              envelope.provenance.environment != nil,
+              isSHA256(envelope.provenance.producer.build),
+              envelope.provenance.inputs == provenance.inputs,
+              provenance.supportingTools.contains(envelope.provenance.producer),
               envelope.artifacts.allSatisfy({
                   !$0.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                      && $0.byteCount >= 0
+                      && $0.byteCount > 0
+                      && $0.producer == envelope.provenance.producer
               }) else {
             throw ElectricalSignoffError.invalidExecutionResult(
                 "envelope identity or payload contract does not match the run result"
             )
+        }
+    }
+
+    private func isSHA256(_ value: String?) -> Bool {
+        guard let value else {
+            return false
+        }
+        return value.utf8.count == 64 && value.utf8.allSatisfy { byte in
+            (byte >= 48 && byte <= 57)
+                || (byte >= 65 && byte <= 70)
+                || (byte >= 97 && byte <= 102)
         }
     }
 }
