@@ -3,7 +3,7 @@
 | Milestone | Completion condition | State |
 |---|---|---|
 | M1 Foundation boundary | Direct Engine conformance and canonical artifacts | Complete |
-| M2 Native axes | PI/EM, ERC, ESD, latch-up, aging return typed results | Complete |
+| M2 Native axes | PI/EM, ERC, ESD, latch-up, aging return typed results with canonical exact entity coverage and no artifact on incomplete analysis | Complete |
 | M3 Topology | Verified extraction and explicit process semantics | Complete for JSON/SPEF lane |
 | M4 Observations | Reproducible corpus and external-oracle correlation | Complete for contract fixtures |
 | M5 Process validation | Real process rules and independent measurements | Pending external inputs |

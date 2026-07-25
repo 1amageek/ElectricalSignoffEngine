@@ -94,7 +94,19 @@ struct FoundationIntegrationTests {
             provenance: childProvenance,
             payload: ElectricalSignoffPayload(
                 violationCount: 0,
-                axis: .erc
+                axis: .erc,
+                provenance: ElectricalSignoffPayload.Provenance(
+                    designDigest: String(repeating: "d", count: 64),
+                    layoutDigest: String(repeating: "e", count: 64),
+                    pdkDigest: String(repeating: "f", count: 64),
+                    parasiticDigest: nil,
+                    topCell: "top",
+                    inputArtifactIDs: []
+                ),
+                analysisCoverage: .init(
+                    expectedEntityIDs: ["net:fixture"],
+                    analyzedEntityIDs: ["net:fixture"]
+                )
             )
         )
         let result = ElectricalSignoffRunResult(
@@ -111,6 +123,18 @@ struct FoundationIntegrationTests {
         #expect(result.diagnostics[0].code.rawValue == "electrical.test.warning")
         #expect(result.diagnostics[0].severity == .warning)
         #expect(result.diagnostics[0].detail == "entity=M1")
+
+        var incompleteAxisResult = axisResult
+        incompleteAxisResult.payload.analysisCoverage = .unassessed
+        let incompleteResult = ElectricalSignoffRunResult(
+            runID: "run-1",
+            status: .completed,
+            axisResults: [.erc: incompleteAxisResult],
+            provenance: provenance
+        )
+        #expect(throws: ElectricalSignoffError.self) {
+            try incompleteResult.validate()
+        }
     }
 }
 

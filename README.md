@@ -28,6 +28,16 @@ invocation, environment fingerprint, implementation version, and executable
 SHA-256. Output artifacts retain that producer identity, and the aggregate run
 binds all axis producers as supporting tools.
 
+Every axis also emits `AnalysisCoverage`, containing the exact expected and
+analyzed entity IDs. A result can be `completed` only when both arrays are
+non-empty, unique, canonically sorted, and identical, and when payload
+provenance plus a persisted report artifact are present. Missing device aging
+models, a powered domain without an ESD rail, an invalid clamp power/ground
+binding, inconsistent well/contact ownership, or any other omitted entity
+therefore produces a structured failure or `blocked` result without a passing
+report artifact. Xcircuite release assembly checks the same coverage contract
+for every operating condition.
+
 ## Ownership boundary
 
 ```mermaid

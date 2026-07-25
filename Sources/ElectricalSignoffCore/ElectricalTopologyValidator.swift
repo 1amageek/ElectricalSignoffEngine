@@ -233,10 +233,37 @@ public struct ElectricalTopologyValidator: Sendable {
         for well in topology.wells where !well.substrateContactIDs.allSatisfy({ contactIDs.contains($0) }) {
             throw ElectricalSignoffError.malformedTopology("well \(well.id) references an unknown substrate contact")
         }
+        let wellByID = Dictionary(
+            uniqueKeysWithValues: topology.wells.map { ($0.id, $0) }
+        )
+        for well in topology.wells {
+            guard Set(well.substrateContactIDs).count
+                    == well.substrateContactIDs.count else {
+                throw ElectricalSignoffError.malformedTopology(
+                    "well \(well.id) contains duplicate substrate contact references"
+                )
+            }
+            for contactID in well.substrateContactIDs {
+                guard topology.substrateContacts.first(where: {
+                    $0.id == contactID
+                })?.wellID == well.id else {
+                    throw ElectricalSignoffError.malformedTopology(
+                        "well \(well.id) and substrate contact \(contactID) disagree on ownership"
+                    )
+                }
+            }
+        }
         for contact in topology.substrateContacts {
             guard wellIDs.contains(contact.wellID), netIDs.contains(contact.netID),
                   contact.areaSquareMicron.isFinite, contact.areaSquareMicron > 0 else {
                 throw ElectricalSignoffError.malformedTopology("substrate contact \(contact.id) has invalid references or area")
+            }
+            guard wellByID[contact.wellID]?.substrateContactIDs.contains(
+                contact.id
+            ) == true else {
+                throw ElectricalSignoffError.malformedTopology(
+                    "substrate contact \(contact.id) is not retained by well \(contact.wellID)"
+                )
             }
         }
         let agingDeviceIDs = topology.agingModels.map(\.deviceID)

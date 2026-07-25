@@ -50,6 +50,18 @@ public struct ElectricalSignoffExecutionSupport: Sendable {
         payload: ElectricalSignoffPayload,
         startedAt: Date
     ) async throws -> ElectricalSignoffResult {
+        guard payload.analysisCoverage.isComplete else {
+            let omitted = payload.analysisCoverage.omittedEntityIDs
+            let reason = omitted.isEmpty
+                ? "analysis coverage has no complete expected entity set"
+                : "analysis omitted: \(omitted.joined(separator: ", "))"
+            return try blockedEnvelope(
+                request: request,
+                axis: axis,
+                error: ElectricalSignoffError.insufficientTopology(reason),
+                startedAt: startedAt
+            )
+        }
         let data: Data
         do {
             let encoder = JSONEncoder()

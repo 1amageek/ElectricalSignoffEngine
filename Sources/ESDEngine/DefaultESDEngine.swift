@@ -20,11 +20,25 @@ public struct DefaultESDEngine: ESDExecuting {
             guard !input.topology.domains.isEmpty else {
                 throw ElectricalSignoffError.insufficientTopology("ESD analysis requires extracted voltage domains")
             }
+            guard input.topology.nets.contains(where: {
+                $0.kind == .power && $0.domainID != nil
+            }) else {
+                throw ElectricalSignoffError.insufficientTopology(
+                    "ESD analysis requires at least one domain-bound power rail"
+                )
+            }
         } catch {
             return try support.blockedEnvelope(request: request, axis: axis, error: error, startedAt: startedAt)
         }
 
         let findings = analyze(input: input)
+        let coveredEntities = input.topology.domains
+            .filter { $0.nominalVoltageV > 0 }
+            .map { "domain:\($0.id)" }
+            + input.topology.nets
+            .filter { $0.kind == .power && $0.domainID != nil }
+            .map { "power-net:\($0.id)" }
+            + input.topology.esdClamps.map { "clamp:\($0.id)" }
         let payload = ElectricalSignoffPayload(
             violationCount: findings.count,
             worstMetric: Double(findings.count),
@@ -34,6 +48,10 @@ public struct DefaultESDEngine: ESDExecuting {
             findings: findings,
             repairCandidates: repairs(from: findings),
             provenance: support.provenance(from: input),
+            analysisCoverage: .init(
+                expectedEntityIDs: coveredEntities,
+                analyzedEntityIDs: coveredEntities
+            ),
             cornerID: input.request.configuration.operatingCondition.id
         )
         do {
@@ -50,8 +68,16 @@ public struct DefaultESDEngine: ESDExecuting {
         let netIDs = Set(topology.nets.map(\.id))
         let domainIDs = Set(topology.domains.map(\.id))
         var findings: [ElectricalSignoffPayload.Finding] = []
-        for domain in topology.domains {
+        for domain in topology.domains where domain.nominalVoltageV > 0 {
             let protectedNets = topology.nets.filter { $0.domainID == domain.id && $0.kind == .power }
+            if protectedNets.isEmpty {
+                findings.append(finding(
+                    code: "electrical.esd.domain-power-rail-missing",
+                    entity: domain.id,
+                    message: "The voltage domain has no extracted power rail to protect.",
+                    actions: ["extract_domain_power_rail", "repair_power_domain_annotation"]
+                ))
+            }
             for net in protectedNets {
                 let clamps = topology.esdClamps.filter { $0.domainID == domain.id && $0.protectedNetID == net.id }
                 if clamps.isEmpty {
@@ -71,6 +97,31 @@ public struct DefaultESDEngine: ESDExecuting {
                     entity: clamp.id,
                     message: "The ESD clamp references a missing domain or net.",
                     actions: ["repair_esd_connectivity", "re-run_topology_extraction"]
+                ))
+                continue
+            }
+            guard let protectedNet = topology.nets.first(where: {
+                $0.id == clamp.protectedNetID
+            }),
+            protectedNet.kind == .power,
+            protectedNet.domainID == clamp.domainID else {
+                findings.append(finding(
+                    code: "electrical.esd.protected-net-invalid",
+                    entity: clamp.id,
+                    message: "The ESD clamp must protect a power rail in its declared voltage domain.",
+                    actions: ["repair_clamp_domain_binding", "connect_clamp_to_power_rail"]
+                ))
+                continue
+            }
+            guard let groundNet = topology.nets.first(where: {
+                $0.id == clamp.groundNetID
+            }),
+            groundNet.kind == .ground || groundNet.kind == .substrate else {
+                findings.append(finding(
+                    code: "electrical.esd.ground-path-invalid",
+                    entity: clamp.id,
+                    message: "The ESD clamp discharge path must terminate at a ground or substrate net.",
+                    actions: ["connect_clamp_to_ground", "correct_discharge_net_kind"]
                 ))
                 continue
             }

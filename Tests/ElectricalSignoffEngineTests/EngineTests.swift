@@ -122,6 +122,44 @@ struct EngineTests {
         }
     }
 
+    @Test("substrate contact ownership must be bidirectionally consistent", .timeLimit(.minutes(1)))
+    func substrateContactOwnershipMustBeConsistent() throws {
+        let fixture = try FixtureProject.make(clean: true)
+        var topology = try JSONDecoder().decode(
+            ElectricalTopology.self,
+            from: Data(contentsOf: fixture.root.appending(path: "electrical-topology.json"))
+        )
+        topology.wells[0].substrateContactIDs = []
+
+        #expect(throws: ElectricalSignoffError.self) {
+            try ElectricalTopologyValidator().validate(topology)
+        }
+    }
+
+    @Test("analysis coverage rejects duplicate and non-canonical entity sets", .timeLimit(.minutes(1)))
+    func analysisCoverageRequiresCanonicalEntitySets() throws {
+        let malformed = Data(
+            """
+            {
+              "expectedEntityIDs": ["device:U1", "device:U1"],
+              "analyzedEntityIDs": ["device:U1"]
+            }
+            """.utf8
+        )
+        let coverage = try JSONDecoder().decode(
+            ElectricalSignoffPayload.AnalysisCoverage.self,
+            from: malformed
+        )
+
+        #expect(coverage.isComplete == false)
+        #expect(
+            ElectricalSignoffPayload.AnalysisCoverage(
+                expectedEntityIDs: ["device:U1"],
+                analyzedEntityIDs: ["device:U1"]
+            ).isComplete
+        )
+    }
+
     @Test("operating condition is retained in the result and changes analysis inputs", .timeLimit(.minutes(1)))
     func operatingConditionIsRetained() async throws {
         let fixture = try FixtureProject.make(clean: true)
@@ -383,6 +421,47 @@ struct EngineTests {
 
         #expect(result.status == .blocked)
         #expect(result.diagnostics.contains { $0.code.rawValue == "electrical.parasitics.missing" })
+    }
+
+    @Test("aging blocks when any extracted device lacks a model", .timeLimit(.minutes(1)))
+    func incompleteAgingCoverageBlocks() async throws {
+        let fixture = try FixtureProject.make(clean: true)
+        let topologyURL = fixture.root.appending(path: "electrical-topology.json")
+        var topology = try JSONDecoder().decode(
+            ElectricalTopology.self,
+            from: Data(contentsOf: topologyURL)
+        )
+        topology.devices.append(
+            ElectricalTopology.Device(
+                id: "U2",
+                model: "fixture_cell",
+                terminals: ["VDD": "VDD", "VSS": "VSS"],
+                domainID: "core",
+                maxTerminalVoltageV: 1.8
+            )
+        )
+        let reference = try FixtureProject.write(
+            data: JSONEncoder().encode(topology),
+            path: "electrical-topology.json",
+            kind: .other,
+            format: .json,
+            root: fixture.root,
+            artifactID: "electrical-topology"
+        )
+        var request = fixture.request
+        request.topologyArtifact = reference
+        request.inputs = request.inputs.map {
+            $0.artifactID == "electrical-topology" ? reference : $0
+        }
+        let result = try await DefaultAgingEngine(
+            support: ElectricalSignoffExecutionSupport(projectRoot: fixture.root)
+        ).execute(request)
+
+        #expect(result.status == .blocked)
+        #expect(result.artifacts.isEmpty)
+        #expect(result.diagnostics.contains {
+            $0.summary.contains("device:U2")
+        })
     }
 
     @Test("digest mismatch is a structured blocked diagnostic", .timeLimit(.minutes(1)))

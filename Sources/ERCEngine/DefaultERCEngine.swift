@@ -22,6 +22,12 @@ public struct DefaultERCEngine: ERCExecuting {
         }
 
         let findings = analyze(input: input)
+        let coveredEntities =
+            input.topology.nets.map { "net:\($0.id)" }
+            + input.topology.devices.map { "device:\($0.id)" }
+            + input.topology.domains.map { "domain:\($0.id)" }
+            + input.topology.sources.map { "source:\($0.id)" }
+            + input.topology.loads.map { "load:\($0.id)" }
         let metrics = [
             ElectricalSignoffPayload.Metric(
                 name: "erc-violations",
@@ -40,6 +46,10 @@ public struct DefaultERCEngine: ERCExecuting {
             findings: findings,
             repairCandidates: repairs(from: findings),
             provenance: support.provenance(from: input),
+            analysisCoverage: .init(
+                expectedEntityIDs: coveredEntities,
+                analyzedEntityIDs: coveredEntities
+            ),
             cornerID: input.request.configuration.operatingCondition.id
         )
         do {

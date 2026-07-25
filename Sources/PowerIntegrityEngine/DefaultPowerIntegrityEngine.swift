@@ -208,6 +208,18 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
             findings: findings,
             repairCandidates: repairs,
             provenance: support.provenance(from: input),
+            analysisCoverage: .init(
+                expectedEntityIDs:
+                    input.topology.segments.map { "segment:\($0.id)" }
+                    + input.topology.vias.map { "via:\($0.id)" }
+                    + input.topology.sources.map { "source:\($0.id)" }
+                    + input.topology.loads.map { "load:\($0.id)" },
+                analyzedEntityIDs:
+                    input.topology.segments.map { "segment:\($0.id)" }
+                    + input.topology.vias.map { "via:\($0.id)" }
+                    + input.topology.sources.map { "source:\($0.id)" }
+                    + input.topology.loads.map { "load:\($0.id)" }
+            ),
             cornerID: input.request.configuration.operatingCondition.id
         )
         do {

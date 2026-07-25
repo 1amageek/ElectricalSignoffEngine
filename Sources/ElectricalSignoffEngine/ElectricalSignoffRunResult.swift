@@ -151,6 +151,12 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable, ArtifactP
         axis: ElectricalSignoffAnalysisAxis,
         cornerID: String?
     ) throws {
+        let hasCompletedContract = envelope.status != .completed
+            || (
+                envelope.payload.analysisCoverage.isComplete
+                    && envelope.payload.provenance != nil
+                    && !envelope.artifacts.isEmpty
+            )
         guard axis != .aggregate,
               envelope.schemaVersion == Self.currentSchemaVersion,
               envelope.runID == runID,
@@ -164,6 +170,7 @@ public struct ElectricalSignoffRunResult: Sendable, Hashable, Codable, ArtifactP
               isSHA256(envelope.provenance.producer.build),
               envelope.provenance.inputs == provenance.inputs,
               provenance.supportingTools.contains(envelope.provenance.producer),
+              hasCompletedContract,
               envelope.artifacts.allSatisfy({
                   !$0.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                       && $0.byteCount > 0

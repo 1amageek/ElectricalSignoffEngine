@@ -25,6 +25,10 @@ public struct DefaultAgingEngine: AgingAnalyzing {
         }
 
         let result = analyze(input: input)
+        let expectedEntities = input.topology.devices.map { "device:\($0.id)" }
+        let analyzedEntities = input.topology.agingModels.map {
+            "device:\($0.deviceID)"
+        }
         let payload = ElectricalSignoffPayload(
             violationCount: result.findings.count,
             worstMetric: result.minimumLifetime,
@@ -34,6 +38,10 @@ public struct DefaultAgingEngine: AgingAnalyzing {
             findings: result.findings,
             repairCandidates: repairs(from: result.findings),
             provenance: support.provenance(from: input),
+            analysisCoverage: .init(
+                expectedEntityIDs: expectedEntities,
+                analyzedEntityIDs: analyzedEntities
+            ),
             cornerID: input.request.configuration.operatingCondition.id
         )
         do {

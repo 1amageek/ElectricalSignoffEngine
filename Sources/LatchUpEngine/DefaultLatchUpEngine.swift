@@ -25,6 +25,8 @@ public struct DefaultLatchUpEngine: LatchUpExecuting {
         }
 
         let findings = analyze(input: input)
+        let coveredEntities = input.topology.wells.map { "well:\($0.id)" }
+            + input.topology.substrateContacts.map { "contact:\($0.id)" }
         let payload = ElectricalSignoffPayload(
             violationCount: findings.count,
             worstMetric: Double(findings.count),
@@ -34,6 +36,10 @@ public struct DefaultLatchUpEngine: LatchUpExecuting {
             findings: findings,
             repairCandidates: repairs(from: findings),
             provenance: support.provenance(from: input),
+            analysisCoverage: .init(
+                expectedEntityIDs: coveredEntities,
+                analyzedEntityIDs: coveredEntities
+            ),
             cornerID: input.request.configuration.operatingCondition.id
         )
         do {
