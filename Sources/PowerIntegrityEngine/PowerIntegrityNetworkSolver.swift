@@ -2,6 +2,11 @@ import Foundation
 import ElectricalSignoffCore
 
 public struct PowerIntegrityNetworkSolver: Sendable {
+    private struct NetNodeKey: Hashable {
+        var netID: String
+        var nodeID: String
+    }
+
     public struct Solution: Sendable, Hashable, Codable {
         public var nodeVoltages: [String: Double]
         public var segmentCurrentsA: [String: Double]
@@ -35,47 +40,77 @@ public struct PowerIntegrityNetworkSolver: Sendable {
         activityScale: Double,
         voltageScale: Double = 1
     ) throws -> Solution {
-        let sourcesByNode = Dictionary(grouping: topology.sources, by: \.nodeID)
-        if let duplicateNode = sourcesByNode.first(where: { $0.value.count > 1 }) {
-            throw ElectricalSignoffError.insufficientTopology("power node \(duplicateNode.key) has multiple independent sources")
+        var sourceIndexByNode: [String: Int] = [:]
+        sourceIndexByNode.reserveCapacity(topology.sources.count)
+        for sourceIndex in topology.sources.indices {
+            let source = topology.sources[sourceIndex]
+            guard sourceIndexByNode.updateValue(sourceIndex, forKey: source.nodeID) == nil else {
+                throw ElectricalSignoffError.insufficientTopology(
+                    "power node \(source.nodeID) has multiple independent sources"
+                )
+            }
         }
-        let sourceByNode = sourcesByNode.compactMapValues(\.first)
         var nodeVoltages: [String: Double] = [:]
+        nodeVoltages.reserveCapacity(topology.nodes.count)
         let effectiveVoltageScale = max(0, voltageScale)
         for source in topology.sources {
             nodeVoltages[source.nodeID] = source.voltageV * effectiveVoltageScale
         }
 
         let effectiveActivityScale = dynamic ? max(0, activityScale) : 0
-        let nodesByNet = Dictionary(grouping: topology.nodes, by: \.netID)
+        var netKindByID: [String: ElectricalTopology.NetKind] = [:]
+        netKindByID.reserveCapacity(topology.nets.count)
+        for net in topology.nets {
+            netKindByID[net.id] = net.kind
+        }
+        var nodeIndicesByNet: [String: [Int]] = [:]
+        nodeIndicesByNet.reserveCapacity(topology.nets.count)
+        for nodeIndex in topology.nodes.indices {
+            nodeIndicesByNet[topology.nodes[nodeIndex].netID, default: []].append(nodeIndex)
+        }
+        var segmentIndicesByNet: [String: [Int]] = [:]
+        segmentIndicesByNet.reserveCapacity(topology.nets.count)
+        for segmentIndex in topology.segments.indices {
+            segmentIndicesByNet[topology.segments[segmentIndex].netID, default: []].append(segmentIndex)
+        }
+        var loadIndicesByNet: [String: [Int]] = [:]
+        loadIndicesByNet.reserveCapacity(topology.nets.count)
+        for loadIndex in topology.loads.indices {
+            loadIndicesByNet[topology.loads[loadIndex].netID, default: []].append(loadIndex)
+        }
         let analyzedNetKinds: Set<ElectricalTopology.NetKind> = [.power, .ground, .substrate, .analog]
-        let analyzedNodeIDs = Set(topology.nodes.filter { node in
-            guard let net = topology.nets.first(where: { $0.id == node.netID }) else {
-                return false
-            }
-            return analyzedNetKinds.contains(net.kind)
-        }.map(\.id))
         for net in topology.nets where analyzedNetKinds.contains(net.kind) {
-            let nodes = nodesByNet[net.id] ?? []
-            let unknownNodes = nodes.filter { sourceByNode[$0.id] == nil }
-            guard !unknownNodes.isEmpty else {
+            let nodeIndices = nodeIndicesByNet[net.id] ?? []
+            let unknownNodeIndices = nodeIndices.filter {
+                sourceIndexByNode[topology.nodes[$0].id] == nil
+            }
+            guard !unknownNodeIndices.isEmpty else {
                 continue
             }
-            let indexByNode = Dictionary(uniqueKeysWithValues: unknownNodes.enumerated().map { ($1.id, $0) })
-            var matrix = Array(repeating: Array(repeating: 0.0, count: unknownNodes.count), count: unknownNodes.count)
-            var rhs = Array(repeating: 0.0, count: unknownNodes.count)
+            var indexByNode: [String: Int] = [:]
+            indexByNode.reserveCapacity(unknownNodeIndices.count)
+            for (matrixIndex, nodeIndex) in unknownNodeIndices.enumerated() {
+                indexByNode[topology.nodes[nodeIndex].id] = matrixIndex
+            }
+            var matrix = Array(
+                repeating: Array(repeating: 0.0, count: unknownNodeIndices.count),
+                count: unknownNodeIndices.count
+            )
+            var rhs = Array(repeating: 0.0, count: unknownNodeIndices.count)
 
-            for segment in topology.segments where segment.netID == net.id {
+            for segmentIndex in segmentIndicesByNet[net.id] ?? [] {
+                let segment = topology.segments[segmentIndex]
                 let conductance = 1 / segment.resistanceOhm
                 let fromUnknown = indexByNode[segment.fromNodeID]
                 let toUnknown = indexByNode[segment.toNodeID]
-                let fromSource = sourceByNode[segment.fromNodeID]
-                let toSource = sourceByNode[segment.toNodeID]
+                let fromSourceIndex = sourceIndexByNode[segment.fromNodeID]
+                let toSourceIndex = sourceIndexByNode[segment.toNodeID]
                 if let fromIndex = fromUnknown {
                     matrix[fromIndex][fromIndex] += conductance
                     if let toIndex = toUnknown {
                         matrix[fromIndex][toIndex] -= conductance
-                    } else if let toSource {
+                    } else if let toSourceIndex {
+                        let toSource = topology.sources[toSourceIndex]
                         rhs[fromIndex] += conductance * toSource.voltageV * effectiveVoltageScale
                     }
                 }
@@ -83,13 +118,15 @@ public struct PowerIntegrityNetworkSolver: Sendable {
                     matrix[toIndex][toIndex] += conductance
                     if let fromIndex = fromUnknown {
                         matrix[toIndex][fromIndex] -= conductance
-                    } else if let fromSource {
+                    } else if let fromSourceIndex {
+                        let fromSource = topology.sources[fromSourceIndex]
                         rhs[toIndex] += conductance * fromSource.voltageV * effectiveVoltageScale
                     }
                 }
             }
 
-            for load in topology.loads where load.netID == net.id {
+            for loadIndex in loadIndicesByNet[net.id] ?? [] {
+                let load = topology.loads[loadIndex]
                 guard let index = indexByNode[load.nodeID] else {
                     continue
                 }
@@ -98,7 +135,8 @@ public struct PowerIntegrityNetworkSolver: Sendable {
             }
 
             let voltages = try solveLinearSystem(matrix: matrix, rhs: rhs, netID: net.id)
-            for node in unknownNodes {
+            for nodeIndex in unknownNodeIndices {
+                let node = topology.nodes[nodeIndex]
                 guard let index = indexByNode[node.id] else {
                     continue
                 }
@@ -106,11 +144,20 @@ public struct PowerIntegrityNetworkSolver: Sendable {
             }
         }
 
-        guard analyzedNodeIDs.isSubset(of: Set(nodeVoltages.keys)) else {
-            throw ElectricalSignoffError.insufficientTopology("every extracted power node must be connected to a fixed source")
+        for node in topology.nodes {
+            if let netKind = netKindByID[node.netID],
+               analyzedNetKinds.contains(netKind),
+               nodeVoltages[node.id] == nil {
+                throw ElectricalSignoffError.insufficientTopology(
+                    "every extracted power node must be connected to a fixed source"
+                )
+            }
         }
 
         var segmentCurrents: [String: Double] = [:]
+        segmentCurrents.reserveCapacity(topology.segments.count)
+        var segmentCurrentByNode: [String: Double] = [:]
+        segmentCurrentByNode.reserveCapacity(topology.nodes.count)
         for segment in topology.segments {
             let current: Double
             if segment.currentA > 0 {
@@ -121,37 +168,43 @@ public struct PowerIntegrityNetworkSolver: Sendable {
                 current = abs(fromVoltage - toVoltage) / segment.resistanceOhm
             }
             segmentCurrents[segment.id] = current
+            segmentCurrentByNode[segment.fromNodeID, default: 0] += current
+            segmentCurrentByNode[segment.toNodeID, default: 0] += current
+        }
+
+        var loadCurrentByNode: [String: Double] = [:]
+        loadCurrentByNode.reserveCapacity(topology.loads.count)
+        var loadCurrentByNetAndNode: [NetNodeKey: Double] = [:]
+        loadCurrentByNetAndNode.reserveCapacity(topology.loads.count)
+        for load in topology.loads {
+            let current = load.staticCurrentA
+                + load.dynamicCurrentA * load.activityFactor * effectiveActivityScale
+            loadCurrentByNode[load.nodeID, default: 0] += current
+            loadCurrentByNetAndNode[
+                NetNodeKey(netID: load.netID, nodeID: load.nodeID),
+                default: 0
+            ] += current
         }
 
         var viaCurrents: [String: Double] = [:]
+        viaCurrents.reserveCapacity(topology.vias.count)
         for via in topology.vias {
             if via.currentA > 0 {
                 viaCurrents[via.id] = via.currentA * (dynamic ? max(1, effectiveActivityScale) : 1)
             } else {
-                let loadCurrent = topology.loads
-                    .filter { $0.netID == via.netID && $0.nodeID == via.nodeID }
-                    .reduce(0) { partial, load in
-                        partial + load.staticCurrentA + load.dynamicCurrentA * load.activityFactor * effectiveActivityScale
-                    }
-                viaCurrents[via.id] = loadCurrent
+                viaCurrents[via.id] = loadCurrentByNetAndNode[
+                    NetNodeKey(netID: via.netID, nodeID: via.nodeID),
+                    default: 0
+                ]
             }
         }
 
         var sourceCurrents: [String: Double] = [:]
+        sourceCurrents.reserveCapacity(topology.sources.count)
         for source in topology.sources {
-            let segmentCurrent = topology.segments
-                .filter { segment in
-                    segment.fromNodeID == source.nodeID || segment.toNodeID == source.nodeID
-                }
-                .reduce(0) { partial, segment in
-                    partial + (segmentCurrents[segment.id] ?? 0)
-                }
-            let localLoadCurrent = topology.loads
-                .filter { $0.nodeID == source.nodeID }
-                .reduce(0) { partial, load in
-                    partial + load.staticCurrentA + load.dynamicCurrentA * load.activityFactor * effectiveActivityScale
-                }
-            sourceCurrents[source.id] = segmentCurrent + localLoadCurrent
+            sourceCurrents[source.id] =
+                segmentCurrentByNode[source.nodeID, default: 0]
+                + loadCurrentByNode[source.nodeID, default: 0]
         }
 
         return Solution(

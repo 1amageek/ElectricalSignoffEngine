@@ -241,31 +241,59 @@ public struct DefaultPowerIntegrityEngine: PowerIntegrityAnalyzing {
     }
 
     private func worstDrop(topology: ElectricalTopology, solution: PowerIntegrityNetworkSolver.Solution) -> Drop {
-        let sourceVoltageByNet = Dictionary(grouping: topology.sources, by: \.netID).mapValues { sources in
-            sources.map(\.voltageV).max() ?? 0
+        var sourceVoltageByNet: [String: Double] = [:]
+        sourceVoltageByNet.reserveCapacity(topology.sources.count)
+        for source in topology.sources {
+            sourceVoltageByNet[source.netID] = max(
+                sourceVoltageByNet[source.netID, default: 0],
+                source.voltageV
+            )
         }
-        return topology.nets.map { net in
+        var minimumVoltageByNet: [String: Double] = [:]
+        minimumVoltageByNet.reserveCapacity(topology.nets.count)
+        for node in topology.nodes {
+            guard let voltage = solution.nodeVoltages[node.id] else {
+                continue
+            }
+            minimumVoltageByNet[node.netID] = min(
+                minimumVoltageByNet[node.netID, default: voltage],
+                voltage
+            )
+        }
+        var worst = Drop(netID: "unknown", value: 0)
+        for net in topology.nets {
             let source = (sourceVoltageByNet[net.id] ?? net.nominalVoltageV ?? 0) * solution.voltageScale
-            let minimum = topology.nodes
-                .filter { $0.netID == net.id }
-                .compactMap { solution.nodeVoltages[$0.id] }
-                .min() ?? source
-            return Drop(netID: net.id, value: max(0, source - minimum))
-        }.max { lhs, rhs in lhs.value < rhs.value } ?? Drop(netID: "unknown", value: 0)
+            let minimum = minimumVoltageByNet[net.id] ?? source
+            let drop = max(0, source - minimum)
+            if drop > worst.value {
+                worst = Drop(netID: net.id, value: drop)
+            }
+        }
+        return worst
     }
 
     private func worstSegmentDensity(topology: ElectricalTopology, solution: PowerIntegrityNetworkSolver.Solution) -> Density {
-        let result = topology.segments.map { segment in
-            Density(segmentID: segment.id, viaID: "", value: (solution.segmentCurrentsA[segment.id] ?? 0) / (segment.widthMicron * segment.thicknessMicron))
-        }.max { lhs, rhs in lhs.value < rhs.value }
-        return result ?? Density(segmentID: "none", viaID: "", value: 0)
+        var worst = Density(segmentID: "none", viaID: "", value: 0)
+        for segment in topology.segments {
+            let density = (solution.segmentCurrentsA[segment.id] ?? 0)
+                / (segment.widthMicron * segment.thicknessMicron)
+            if density > worst.value {
+                worst = Density(segmentID: segment.id, viaID: "", value: density)
+            }
+        }
+        return worst
     }
 
     private func worstViaDensity(topology: ElectricalTopology, solution: PowerIntegrityNetworkSolver.Solution) -> Density {
-        let result = topology.vias.map { via in
-            Density(segmentID: "", viaID: via.id, value: (solution.viaCurrentsA[via.id] ?? 0) / (via.cutAreaSquareMicron * Double(via.count)))
-        }.max { lhs, rhs in lhs.value < rhs.value }
-        return result ?? Density(segmentID: "", viaID: "none", value: 0)
+        var worst = Density(segmentID: "", viaID: "none", value: 0)
+        for via in topology.vias {
+            let density = (solution.viaCurrentsA[via.id] ?? 0)
+                / (via.cutAreaSquareMicron * Double(via.count))
+            if density > worst.value {
+                worst = Density(segmentID: "", viaID: via.id, value: density)
+            }
+        }
+        return worst
     }
 
     private func finding(

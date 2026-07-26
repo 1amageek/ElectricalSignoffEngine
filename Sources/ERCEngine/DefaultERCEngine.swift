@@ -3,6 +3,12 @@ import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultERCEngine: ERCExecuting {
+    private struct NetDescriptor {
+        var kind: ElectricalTopology.NetKind
+        var nominalVoltageV: Double?
+        var domainID: String?
+    }
+
     public let support: ElectricalSignoffExecutionSupport
 
     public init(support: ElectricalSignoffExecutionSupport = ElectricalSignoffExecutionSupport()) {
@@ -62,14 +68,45 @@ public struct DefaultERCEngine: ERCExecuting {
     private func analyze(input: ElectricalSignoffInput) -> [ElectricalSignoffPayload.Finding] {
         let topology = input.topology
         let condition = input.request.configuration.operatingCondition
-        let netByID = Dictionary(uniqueKeysWithValues: topology.nets.map { ($0.id, $0) })
-        let sourcesByNet = Dictionary(grouping: topology.sources, by: \.netID)
-        let driverNets = Set(topology.devices.filter(\.isDriver).flatMap { device in
-            device.terminals.values
-        })
+        var netByID: [String: NetDescriptor] = [:]
+        netByID.reserveCapacity(topology.nets.count)
+        for net in topology.nets {
+            netByID[net.id] = NetDescriptor(
+                kind: net.kind,
+                nominalVoltageV: net.nominalVoltageV,
+                domainID: net.domainID
+            )
+        }
+        var sourceCountByNet: [String: Int] = [:]
+        sourceCountByNet.reserveCapacity(topology.sources.count)
+        for source in topology.sources {
+            sourceCountByNet[source.netID, default: 0] += 1
+        }
+        var connectedNetIDs: Set<String> = []
+        var driverNets: Set<String> = []
+        for device in topology.devices {
+            for netID in device.terminals.values {
+                connectedNetIDs.insert(netID)
+                if device.isDriver {
+                    driverNets.insert(netID)
+                }
+            }
+        }
+        var loadNetIDs: Set<String> = []
+        loadNetIDs.reserveCapacity(topology.loads.count)
+        for load in topology.loads {
+            loadNetIDs.insert(load.netID)
+        }
+        var poweredDomainIDs: Set<String> = []
+        poweredDomainIDs.reserveCapacity(topology.domains.count)
+        for net in topology.nets where sourceCountByNet[net.id, default: 0] > 0 {
+            if let domainID = net.domainID {
+                poweredDomainIDs.insert(domainID)
+            }
+        }
         var findings: [ElectricalSignoffPayload.Finding] = []
 
-        for (netID, sources) in sourcesByNet where sources.count > 1 {
+        for (netID, sourceCount) in sourceCountByNet where sourceCount > 1 {
             findings.append(finding(
                 code: "electrical.erc.multiple-drivers",
                 entity: netID,
@@ -78,9 +115,9 @@ public struct DefaultERCEngine: ERCExecuting {
             ))
         }
         for net in topology.nets {
-            let hasDeviceConnection = topology.devices.contains { $0.terminals.values.contains(net.id) }
-            let hasLoad = topology.loads.contains { $0.netID == net.id }
-            let hasSource = sourcesByNet[net.id]?.isEmpty == false
+            let hasDeviceConnection = connectedNetIDs.contains(net.id)
+            let hasLoad = loadNetIDs.contains(net.id)
+            let hasSource = sourceCountByNet[net.id, default: 0] > 0
             let hasDriver = driverNets.contains(net.id)
             if (hasDeviceConnection || hasLoad) && !hasSource && !hasDriver {
                 findings.append(finding(
@@ -120,7 +157,11 @@ public struct DefaultERCEngine: ERCExecuting {
                 }
             }
         }
-        let domainIDs = Set(topology.domains.map(\.id))
+        var domainIDs: Set<String> = []
+        domainIDs.reserveCapacity(topology.domains.count)
+        for domain in topology.domains {
+            domainIDs.insert(domain.id)
+        }
         for domain in topology.domains {
             for requiredDomainID in domain.requiresPowerDomainIDs {
                 guard domainIDs.contains(requiredDomainID) else {
@@ -132,10 +173,7 @@ public struct DefaultERCEngine: ERCExecuting {
                     ))
                     continue
                 }
-                let isPowered = topology.nets.contains {
-                    $0.domainID == requiredDomainID && (sourcesByNet[$0.id]?.isEmpty == false)
-                }
-                if !isPowered {
+                if !poweredDomainIDs.contains(requiredDomainID) {
                     findings.append(finding(
                         code: "electrical.erc.sequencing-unpowered",
                         entity: domain.id,

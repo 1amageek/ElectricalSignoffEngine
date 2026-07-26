@@ -1,5 +1,10 @@
 .build/
-.swiftpm/
+.swiftpm/*
+!.swiftpm/xcode/
+.swiftpm/xcode/*
+!.swiftpm/xcode/package.xcworkspace/
+.swiftpm/xcode/package.xcworkspace/*
+!.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 DerivedData/
 .xcircuite/
 .DS_Store

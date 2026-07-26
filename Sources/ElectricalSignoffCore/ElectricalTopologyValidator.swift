@@ -233,20 +233,23 @@ public struct ElectricalTopologyValidator: Sendable {
         for well in topology.wells where !well.substrateContactIDs.allSatisfy({ contactIDs.contains($0) }) {
             throw ElectricalSignoffError.malformedTopology("well \(well.id) references an unknown substrate contact")
         }
-        let wellByID = Dictionary(
-            uniqueKeysWithValues: topology.wells.map { ($0.id, $0) }
-        )
+        var contactOwnerByID: [String: String] = [:]
+        contactOwnerByID.reserveCapacity(topology.substrateContacts.count)
+        for contact in topology.substrateContacts {
+            contactOwnerByID[contact.id] = contact.wellID
+        }
+        var retainedContactIDsByWell: [String: Set<String>] = [:]
+        retainedContactIDsByWell.reserveCapacity(topology.wells.count)
         for well in topology.wells {
-            guard Set(well.substrateContactIDs).count
-                    == well.substrateContactIDs.count else {
+            let retainedContactIDs = Set(well.substrateContactIDs)
+            guard retainedContactIDs.count == well.substrateContactIDs.count else {
                 throw ElectricalSignoffError.malformedTopology(
                     "well \(well.id) contains duplicate substrate contact references"
                 )
             }
+            retainedContactIDsByWell[well.id] = retainedContactIDs
             for contactID in well.substrateContactIDs {
-                guard topology.substrateContacts.first(where: {
-                    $0.id == contactID
-                })?.wellID == well.id else {
+                guard contactOwnerByID[contactID] == well.id else {
                     throw ElectricalSignoffError.malformedTopology(
                         "well \(well.id) and substrate contact \(contactID) disagree on ownership"
                     )
@@ -258,9 +261,7 @@ public struct ElectricalTopologyValidator: Sendable {
                   contact.areaSquareMicron.isFinite, contact.areaSquareMicron > 0 else {
                 throw ElectricalSignoffError.malformedTopology("substrate contact \(contact.id) has invalid references or area")
             }
-            guard wellByID[contact.wellID]?.substrateContactIDs.contains(
-                contact.id
-            ) == true else {
+            guard retainedContactIDsByWell[contact.wellID]?.contains(contact.id) == true else {
                 throw ElectricalSignoffError.malformedTopology(
                     "substrate contact \(contact.id) is not retained by well \(contact.wellID)"
                 )

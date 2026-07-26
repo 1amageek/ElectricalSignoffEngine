@@ -51,6 +51,7 @@ let package = Package(
         .library(name: "AgingEngine", targets: ["AgingEngine"]),
         .library(name: "ElectricalSignoffEngine", targets: ["ElectricalSignoffEngine"]),
         .library(name: "ElectricalSignoffEvidence", targets: ["ElectricalSignoffEvidence"]),
+        .library(name: "ElectricalSignoffCLICore", targets: ["ElectricalSignoffCLICore"]),
         .executable(name: "electrical-signoff", targets: ["ElectricalSignoffCLI"]),
     ],
     dependencies: [
@@ -113,9 +114,18 @@ let package = Package(
                 .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
             ]
         ),
+        .target(
+            name: "ElectricalSignoffCLICore",
+            dependencies: [
+                .product(name: "CircuiteFoundation", package: "CircuiteFoundation"),
+                "ElectricalSignoffCore",
+                "ElectricalSignoffEngine",
+                "ElectricalSignoffEvidence",
+            ]
+        ),
         .executableTarget(
             name: "ElectricalSignoffCLI",
-            dependencies: ["ElectricalSignoffCore", "ElectricalSignoffEngine", "ElectricalSignoffEvidence"]
+            dependencies: ["ElectricalSignoffCLICore"]
         ),
         .testTarget(
             name: "ElectricalSignoffEngineTests",
@@ -140,7 +150,7 @@ let package = Package(
                 "ElectricalSignoffCore",
                 "ElectricalSignoffEngine",
                 "ElectricalSignoffEvidence",
-                "ElectricalSignoffCLI",
+                "ElectricalSignoffCLICore",
                 .product(name: "LogicIR", package: "LogicDesign"),
                 .product(name: "PDKCore", package: "PDKKit"),
                 .product(name: "PhysicalDesignCore", package: "PhysicalDesignEngine"),

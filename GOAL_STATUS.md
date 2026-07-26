@@ -11,6 +11,7 @@
 | Raw corpus observations | Implemented |
 | Independent-oracle correlation | Contract and local loader implemented |
 | Deterministic CLI | Implemented |
+| Large-topology performance | PI and topology-validation quadratic scans removed; 8,000-entity latency budgets and PI repeated-result determinism retained |
 | Foundry/process validation | Awaiting real process artifacts and external observations |
 
 The package owns analysis and observation generation. Tool trust, flow policy,

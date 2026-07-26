@@ -15,6 +15,7 @@ artifact-bound topology.
 | `AgingEngine` | NBTI, HCI, and TDDB lifetime projection |
 | `ElectricalSignoffEvidence` | Raw corpus and independent-oracle observations |
 | `ElectricalSignoffEngine` | Foundation-conforming umbrella engine |
+| `ElectricalSignoffCLICore` | Protocol-first command parsing and reusable CLI execution |
 | `electrical-signoff` | Standalone developer and Agent CLI |
 
 `ElectricalTopology` binds design, layout, PDK, power intent, and parasitic
@@ -138,19 +139,47 @@ revision. Xcircuite or another umbrella checkout is not required.
 
 | Dependency | Local sibling | Remote fallback revision |
 |---|---|---|
-| CircuiteFoundation | `../CircuiteFoundation` | `2ec6ee13a89ac6885be3c26b41a9ee0ef89948ac` |
-| LogicDesign | `../LogicDesign` | `09768ed203d97d1d0f79f786f9988fcb2cd39155` |
-| PDKKit | `../PDKKit` | `28f3b83304ad2bbb0c2e0269d26616081d90d992` |
-| PhysicalDesignEngine | `../PhysicalDesignEngine` | `a98c0895c0c0340326f79d7838ddc37ba86cfa2b` |
-| PEXEngine | `../PEXEngine` | `f3078e12af274a714e27ec523f19c5c29abd42dd` |
+| CircuiteFoundation | `../CircuiteFoundation` | `7abcac83517935c9b9f7553d7016d62cffde259d` |
+| LogicDesign | `../LogicDesign` | `b0eff14c90faafb4e474ed629358c9f7c12d0ea6` |
+| PDKKit | `../PDKKit` | `b62c5ad7e5819a24977038c2133856caed52f481` |
+| PhysicalDesignEngine | `../PhysicalDesignEngine` | `a2b64a3f9f1651be0601496a7423a211c1438c49` |
+| PEXEngine | `../PEXEngine` | `ba10c1fe0b847d5816faef4eae67c64a19d61e1e` |
 
 ```bash
-xcodebuild -scheme ElectricalSignoffEngine-Package -destination 'platform=macOS' build
-xcodebuild -scheme ElectricalSignoffEngine-Package -destination 'platform=macOS' test
+xcodebuild \
+  -workspace .swiftpm/xcode/package.xcworkspace \
+  -scheme ElectricalSignoffEngine-Package \
+  -destination 'platform=macOS' \
+  build
+
+xcodebuild \
+  -workspace .swiftpm/xcode/package.xcworkspace \
+  -scheme ElectricalSignoffEngine-Package \
+  -destination 'platform=macOS' \
+  test
 ```
 
 The package uses Swift Testing. Tests cover native axes, topology extraction,
-Foundation integration, raw corpus observations, and oracle correlation.
+Foundation integration, raw corpus observations, oracle correlation, and
+large-topology latency and determinism.
+
+## Performance contract
+
+The power-integrity solver builds lightweight per-run indexes of source, node,
+segment, and load array positions. ERC and ESD build only the connection and
+domain lookup values required by their own analysis. The canonical
+`ElectricalTopology` remains the sole owned topology, so analysis indexes do
+not become another public state model.
+
+`PerformanceRegressionTests` exercises 8,000 independent power rails and 8,000
+bidirectionally owned well contacts. The solver has a five-second debug-build
+latency budget under the full parallel package test graph; validation has a
+one-second budget. On the 2026-07-26 development host, the isolated solver
+fixture improved from 34.247 seconds to 0.052 seconds and validation improved
+from 2.213 seconds to 0.017 seconds. The solver completed in 1.571 seconds while
+both Xcode test bundles ran concurrently. The solver fixture also requires
+identical repeated solutions. These fixtures establish algorithmic regression
+budgets, not foundry-scale memory qualification or accuracy correlation.
 
 See `DESIGN.md`, `INTERFACES.md`, `IMPLEMENTATION_PLAN.md`, and `MILESTONES.md`
 for the package contracts and remaining work.

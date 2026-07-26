@@ -3,6 +3,16 @@ import CircuiteFoundation
 import ElectricalSignoffCore
 
 public struct DefaultESDEngine: ESDExecuting {
+    private struct NetDescriptor {
+        var kind: ElectricalTopology.NetKind
+        var domainID: String?
+    }
+
+    private struct DomainNetKey: Hashable {
+        var domainID: String
+        var netID: String
+    }
+
     public let support: ElectricalSignoffExecutionSupport
 
     public init(support: ElectricalSignoffExecutionSupport = ElectricalSignoffExecutionSupport()) {
@@ -65,12 +75,38 @@ public struct DefaultESDEngine: ESDExecuting {
         let topology = input.topology
         let condition = input.request.configuration.operatingCondition
         let rules = topology.rules(for: condition)
-        let netIDs = Set(topology.nets.map(\.id))
-        let domainIDs = Set(topology.domains.map(\.id))
+        var netByID: [String: NetDescriptor] = [:]
+        netByID.reserveCapacity(topology.nets.count)
+        var powerNetIDsByDomain: [String: [String]] = [:]
+        powerNetIDsByDomain.reserveCapacity(topology.domains.count)
+        for net in topology.nets {
+            netByID[net.id] = NetDescriptor(kind: net.kind, domainID: net.domainID)
+            if net.kind == .power, let domainID = net.domainID {
+                powerNetIDsByDomain[domainID, default: []].append(net.id)
+            }
+        }
+        var maximumVoltageByDomain: [String: Double] = [:]
+        maximumVoltageByDomain.reserveCapacity(topology.domains.count)
+        for domain in topology.domains {
+            maximumVoltageByDomain[domain.id] = domain.maximumVoltageV
+        }
+        var protectedDomainNetKeys: Set<DomainNetKey> = []
+        protectedDomainNetKeys.reserveCapacity(topology.esdClamps.count)
+        for clamp in topology.esdClamps {
+            protectedDomainNetKeys.insert(
+                DomainNetKey(domainID: clamp.domainID, netID: clamp.protectedNetID)
+            )
+        }
+        var stressCurrentByNet: [String: Double] = [:]
+        stressCurrentByNet.reserveCapacity(topology.loads.count)
+        for load in topology.loads {
+            stressCurrentByNet[load.netID, default: 0] +=
+                load.staticCurrentA + load.dynamicCurrentA * condition.activityScale
+        }
         var findings: [ElectricalSignoffPayload.Finding] = []
         for domain in topology.domains where domain.nominalVoltageV > 0 {
-            let protectedNets = topology.nets.filter { $0.domainID == domain.id && $0.kind == .power }
-            if protectedNets.isEmpty {
+            let protectedNetIDs = powerNetIDsByDomain[domain.id] ?? []
+            if protectedNetIDs.isEmpty {
                 findings.append(finding(
                     code: "electrical.esd.domain-power-rail-missing",
                     entity: domain.id,
@@ -78,12 +114,13 @@ public struct DefaultESDEngine: ESDExecuting {
                     actions: ["extract_domain_power_rail", "repair_power_domain_annotation"]
                 ))
             }
-            for net in protectedNets {
-                let clamps = topology.esdClamps.filter { $0.domainID == domain.id && $0.protectedNetID == net.id }
-                if clamps.isEmpty {
+            for netID in protectedNetIDs {
+                if !protectedDomainNetKeys.contains(
+                    DomainNetKey(domainID: domain.id, netID: netID)
+                ) {
                     findings.append(finding(
                         code: "electrical.esd.clamp-missing",
-                        entity: net.id,
+                        entity: netID,
                         message: "No extracted ESD clamp protects the power-domain rail.",
                         actions: ["add_domain_clamp", "connect_existing_clamp", "review_esd_power_intent"]
                     ))
@@ -91,7 +128,9 @@ public struct DefaultESDEngine: ESDExecuting {
             }
         }
         for clamp in topology.esdClamps {
-            guard domainIDs.contains(clamp.domainID), netIDs.contains(clamp.protectedNetID), netIDs.contains(clamp.groundNetID) else {
+            guard maximumVoltageByDomain[clamp.domainID] != nil,
+                  netByID[clamp.protectedNetID] != nil,
+                  netByID[clamp.groundNetID] != nil else {
                 findings.append(finding(
                     code: "electrical.esd.path-reference-invalid",
                     entity: clamp.id,
@@ -100,9 +139,7 @@ public struct DefaultESDEngine: ESDExecuting {
                 ))
                 continue
             }
-            guard let protectedNet = topology.nets.first(where: {
-                $0.id == clamp.protectedNetID
-            }),
+            guard let protectedNet = netByID[clamp.protectedNetID],
             protectedNet.kind == .power,
             protectedNet.domainID == clamp.domainID else {
                 findings.append(finding(
@@ -113,9 +150,7 @@ public struct DefaultESDEngine: ESDExecuting {
                 ))
                 continue
             }
-            guard let groundNet = topology.nets.first(where: {
-                $0.id == clamp.groundNetID
-            }),
+            guard let groundNet = netByID[clamp.groundNetID],
             groundNet.kind == .ground || groundNet.kind == .substrate else {
                 findings.append(finding(
                     code: "electrical.esd.ground-path-invalid",
@@ -135,22 +170,18 @@ public struct DefaultESDEngine: ESDExecuting {
                     actions: ["review_clamp_model", "check_short_path", "verify_pdk_esd_rule"]
                 ))
             }
-            let domain = topology.domains.first { $0.id == clamp.domainID }
-            if let domain, clamp.triggerVoltageV >= domain.maximumVoltageV * condition.supplyVoltageScale {
+            if let maximumVoltage = maximumVoltageByDomain[clamp.domainID],
+               clamp.triggerVoltageV >= maximumVoltage * condition.supplyVoltageScale {
                 findings.append(finding(
                     code: "electrical.esd.trigger-too-high",
                     entity: clamp.id,
                     message: "The ESD clamp trigger voltage does not protect the domain maximum voltage.",
                     observed: clamp.triggerVoltageV,
-                    limit: domain.maximumVoltageV,
+                    limit: maximumVoltage,
                     actions: ["select_lower_trigger_clamp", "correct_domain_voltage"]
                 ))
             }
-            let stressCurrent = topology.loads
-                .filter { $0.netID == clamp.protectedNetID }
-                .reduce(0) { partial, load in
-                    partial + load.staticCurrentA + load.dynamicCurrentA * condition.activityScale
-                }
+            let stressCurrent = stressCurrentByNet[clamp.protectedNetID, default: 0]
             if stressCurrent > clamp.maximumCurrentA {
                 findings.append(finding(
                     code: "electrical.esd.current-capacity",

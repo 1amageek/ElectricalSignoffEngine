@@ -9,12 +9,15 @@
 - Raw corpus observation and independent-oracle correlation contracts.
 - Deterministic JSON CLI for analysis, extraction, and corpus execution.
 - Foundation evidence and typed repair-plan output.
+- Linear-time topology lookup paths for PI, ERC, ESD, and topology validation,
+  with retained 8,000-entity latency and PI determinism tests.
 
 ## Remaining engineering work
 
 1. Expand standard-format topology fixtures and process-rule coverage.
 2. Add real process data and independently operated oracle observations.
-3. Improve numerical correlation and performance regression coverage.
+3. Add independent numerical tolerances, per-axis memory/allocation budgets,
+   and scale fixtures for ERC, ESD, latch-up, and aging.
 4. Exercise immutable artifacts through Xcircuite resume and review flows.
 
 ## Ownership gates
