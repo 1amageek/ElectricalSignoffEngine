@@ -13,31 +13,31 @@ let circuiteFoundationDependency: Package.Dependency = isLSIWorkspace && FileMan
     atPath: workspaceRoot.appendingPathComponent("CircuiteFoundation/Package.swift").path
 )
     ? .package(path: "../CircuiteFoundation")
-    : .package(url: "https://github.com/1amageek/CircuiteFoundation.git", revision: "7abcac83517935c9b9f7553d7016d62cffde259d")
+    : .package(url: "https://github.com/1amageek/CircuiteFoundation.git", revision: "dc792c88e189c822c9f83ea86cf139ee68560dca")
 
 let logicDesignDependency: Package.Dependency = isLSIWorkspace && FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("LogicDesign/Package.swift").path
 )
     ? .package(path: "../LogicDesign")
-    : .package(url: "https://github.com/1amageek/LogicDesign.git", revision: "b0eff14c90faafb4e474ed629358c9f7c12d0ea6")
+    : .package(url: "https://github.com/1amageek/LogicDesign.git", revision: "e8f8e1dace0445ddd816929c4ca0fe17cca12a7b")
 
 let pdkKitDependency: Package.Dependency = isLSIWorkspace && FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PDKKit/Package.swift").path
 )
     ? .package(path: "../PDKKit")
-    : .package(url: "https://github.com/1amageek/PDKKit.git", revision: "b62c5ad7e5819a24977038c2133856caed52f481")
+    : .package(url: "https://github.com/1amageek/PDKKit.git", revision: "7903ccd69a3aa24ebf8ab1076910fab88670ecc1")
 
 let physicalDesignEngineDependency: Package.Dependency = isLSIWorkspace && FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PhysicalDesignEngine/Package.swift").path
 )
     ? .package(path: "../PhysicalDesignEngine")
-    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "a2b64a3f9f1651be0601496a7423a211c1438c49")
+    : .package(url: "https://github.com/1amageek/PhysicalDesignEngine.git", revision: "0c3ad36bdc6893d84a7b81bf8784ed4c8d0af18d")
 
 let pexEngineDependency: Package.Dependency = isLSIWorkspace && FileManager.default.fileExists(
     atPath: workspaceRoot.appendingPathComponent("PEXEngine/Package.swift").path
 )
     ? .package(path: "../PEXEngine")
-    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "ba10c1fe0b847d5816faef4eae67c64a19d61e1e")
+    : .package(url: "https://github.com/1amageek/PEXEngine.git", revision: "c2dc912203790d862a2055bd6abd9a0a1dc86b6b")
 
 let package = Package(
     name: "ElectricalSignoffEngine",
