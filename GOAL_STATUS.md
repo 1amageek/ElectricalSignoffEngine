@@ -6,7 +6,7 @@
 | Canonical artifact and provenance output | Implemented |
 | Power integrity and EM | Implemented for native process-independent scope |
 | ERC, ESD, latch-up, aging | Implemented for native process-independent scope with canonical exact entity coverage, ESD power/ground binding checks, and bidirectional well/contact validation; incomplete topology is blocked |
-| Canonical topology extraction | Implemented for JSON/SPEF source lane |
+| Canonical topology extraction | Implemented for digest-verified JSON canonical IR plus standard SPEF parasitics, with exact entity mapping and fail-closed malformed/incomplete inputs |
 | Multi-corner execution | Implemented |
 | Raw corpus observations | Implemented |
 | Independent-oracle correlation | Contract and local loader implemented |

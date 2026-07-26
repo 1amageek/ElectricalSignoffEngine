@@ -13,10 +13,11 @@ public struct ElectricalSignoffCapabilitySnapshot: Sendable, Hashable, Codable {
         schemaVersion: Int = 2,
         engineID: String = "ElectricalSignoffEngine",
         supportedAxes: [ElectricalSignoffAnalysisAxis],
-        nativeTopologyFormats: [String] = ["JSON"],
+        nativeTopologyFormats: [String] = ["JSON", "SPEF"],
         validationScope: String = "native-fixture-corpus",
         limitations: [String] = [
             "Native analysis requires a verified extracted electrical topology or a verified JSON source bundle.",
+            "SPEF is consumed as parasitic input and combined with canonical logic and physical design IR; this package does not own layout exchange parsing.",
             "GDSII and OASIS bytes are not interpreted as electrical semantics by this package.",
             "Multiple operating conditions are evaluated sequentially and retained as raw results.",
             "Tool trust is evaluated by ToolQualification from retained corpus and oracle observations."

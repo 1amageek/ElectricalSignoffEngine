@@ -22,6 +22,7 @@ struct ContractTests {
         #expect(snapshot.schemaVersion == 2)
         #expect(snapshot.engineID == "ElectricalSignoffEngine")
         #expect(snapshot.supportedAxes == ElectricalSignoffEngine.supportedAxes)
+        #expect(snapshot.nativeTopologyFormats == ["JSON", "SPEF"])
 
         let encoded = try JSONEncoder().encode(snapshot)
         let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])

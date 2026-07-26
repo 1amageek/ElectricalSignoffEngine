@@ -88,9 +88,13 @@ case measurements and `ElectricalSignoffObservationMaturity`.
 `ElectricalSignoffOracleObservationSet` for independent correlation. Oracle
 independence is never inferred from a display name.
 
-The checked-in fixtures are process-independent contract data. Together with the
-contract tests, they cover parsing, analysis, artifact integrity, and observation
-correlation; they do not establish foundry acceptance or release eligibility.
+The checked-in fixtures are process-independent contract data. Together with
+the contract tests, they cover canonical JSON logic/physical/process input,
+standard SPEF parasitics, exact entity mapping, malformed and incomplete
+topology rejection, multi-corner analysis, every native axis, artifact
+integrity, and observation correlation. Layout exchange parsing remains in its
+owning packages; these fixtures do not establish foundry acceptance or release
+eligibility.
 
 ## CLI
 

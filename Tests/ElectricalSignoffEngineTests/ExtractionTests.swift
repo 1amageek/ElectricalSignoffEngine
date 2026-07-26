@@ -179,6 +179,30 @@ struct ExtractionTests {
         let spefLoaded = try await LocalElectricalTopologySourceLoader(projectRoot: root).load(request: spefRequest)
         #expect(spefLoaded.parasitic?.nets.first?.name.value == "VDD")
         #expect(spefLoaded.parasitic?.nets.first?.totalResistanceOhm == 10)
+        let spefTopology = try NativeElectricalTopologyExtractor().extract(spefLoaded)
+        #expect(spefTopology.parasiticDigest == spefReference.digest.hexadecimalValue)
+        #expect(spefTopology.segments.first {
+            $0.id == "seg-vdd"
+        }?.resistanceOhm == 10)
+        #expect(spefTopology.nodes.contains {
+            $0.id == "pin:U1:VDD:p-vdd" && $0.netID == "VDD"
+        })
+
+        let malformedSPEFReference = try ExtractionFixture.write(
+            data: Data("*SPEF \"IEEE 1481-1998\"\n*D_NET".utf8),
+            path: "malformed-parasitics.spef",
+            kind: .parasitics,
+            format: .spef,
+            root: root,
+            artifactID: "malformed-parasitics-spef"
+        )
+        var malformedSPEFRequest = request
+        malformedSPEFRequest.parasitics = malformedSPEFReference
+        await #expect(throws: ElectricalSignoffError.self) {
+            _ = try await LocalElectricalTopologySourceLoader(
+                projectRoot: root
+            ).load(request: malformedSPEFRequest)
+        }
     }
 }
 
